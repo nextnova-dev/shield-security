@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 class Shield_License {
 
-    const VALIDATE_URL = 'https://nextnova.tech/validate/validate.php';  // Change to your endpoint
+    const VALIDATE_URL = 'https://nextnova-lic.com/api/shield/validate';  // Change to your endpoint
     const CACHE_KEY    = 'shield_lic_status';
     const CACHE_TTL    = 12 * HOUR_IN_SECONDS;
 
