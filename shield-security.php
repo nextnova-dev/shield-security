@@ -1,11 +1,11 @@
 <?php
 /**
  * Plugin Name: Shield Security
- * Plugin URI:  https://github.com/nextnova-dev/shield-security.git
+ * Plugin URI:  https://github.com/nextnova-technologies/shield-security
  * Description: Professional WordPress security — malware cleanup, deep scanner, login hardening, and auto-updates.
- * Version:     1.0.0
+ * Version:     1.1.0
  * Author:      Next Nova Technologies
- * Author URI:  https://nextnova.tech/
+ * Author URI:  https://nextnovatechnologies.com
  * License:     GPL-2.0+
  * Text Domain: shield-security
  * Requires PHP: 7.0
@@ -23,7 +23,7 @@ if ( version_compare( PHP_VERSION, '7.0.0', '<' ) ) {
 }
 
 // ── Constants ─────────────────────────────────────────────────────────
-define( 'SHIELD_VERSION',    '1.0.0' );
+define( 'SHIELD_VERSION',    '1.1.0' );
 define( 'SHIELD_SLUG',       'shield-security' );
 define( 'SHIELD_FILE',       __FILE__ );
 define( 'SHIELD_DIR',        plugin_dir_path( __FILE__ ) );
