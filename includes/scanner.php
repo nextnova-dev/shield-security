@@ -18,6 +18,17 @@ class Shield_Scanner {
             '_ac_'   . 'ce79ae25',
             'wp_15384834' . 'c4_cfg',
             'Opt_Service' . '_002e',
+            // Starter Render Loader / blockchain C2 family
+            'webanalytics' . '-cdn.sbs',
+            'Cache_Load' . 'er_727f',
+            '_192ae' . '6_hb',
+            'wp_c9cd' . '735c_tick',
+            'polygon' . '.drpc.org',
+            'webanalytics' . '-cdn',
+            // Smart Database Engine / decoy-scatter family
+            'Opt_Module' . '_20d2',
+            'wp_2170b6' . 'c732_cfg',
+            'gzinflate(@base64' . '_decode',
             'base64_decode' . '(gzinflate',
             'eval'   . '(base64_decode',
             'eval'   . '(gzinflate',
@@ -57,6 +68,12 @@ class Shield_Scanner {
             'wp_15384834' . 'c4_cfg',
             'role_cache_rebuild_%',
             'site_optimization_scan_%',
+            // Starter Render Loader family
+            'starter-render-loader-f386%',
+            '_192ae6_%',
+            // Smart Database Engine / decoy-scatter family
+            'wp_2170b6c732%',
+            'smart-database-engine%',
         );
     }
 
@@ -129,7 +146,10 @@ class Shield_Scanner {
 
         switch ( $step ) {
             case 'mu_plugins': self::scan_directory( WPMU_PLUGIN_DIR, $partial ); break;
-            case 'plugins':    self::scan_directory( WP_PLUGIN_DIR, $partial );   break;
+            case 'plugins':
+                self::scan_directory( WP_PLUGIN_DIR, $partial );
+                self::scan_decoy_plugins( $partial );
+                break;
             case 'themes':
                 self::scan_directory( get_template_directory(), $partial );
                 $child = get_stylesheet_directory();
@@ -244,6 +264,43 @@ class Shield_Scanner {
                 }
             }
         }
+    }
+
+    // ── Decoy / empty plugin file detection ─────────────────────────
+    // Detects the scatter-decoy technique: folders of single-file plugins
+    // where most are empty (0 bytes) to confuse admins, hiding one active
+    // malware file among them. Flags the [word]-[word]-[4hex].php pattern.
+    private static function scan_decoy_plugins( &$partial ) {
+        $name_pattern = '/^[a-z]+(?:-[a-z0-9]+)+-[0-9a-f]{4}\.php$/i';
+        $handle = @opendir( WP_PLUGIN_DIR );
+        if ( ! $handle ) return;
+        while ( ( $item = readdir( $handle ) ) !== false ) {
+            if ( $item === '.' || $item === '..' ) continue;
+            $plugin_dir = WP_PLUGIN_DIR . '/' . $item;
+            if ( ! is_dir( $plugin_dir ) ) continue;
+            if ( shield_path_is_excluded( $plugin_dir ) ) continue;
+            $php_files = glob( $plugin_dir . '/*.php' );
+            if ( ! $php_files ) continue;
+            foreach ( $php_files as $file ) {
+                $basename = basename( $file );
+                if ( ! preg_match( $name_pattern, $basename ) ) continue;
+                $size = @filesize( $file );
+                $rel  = str_replace( ABSPATH, '', $file );
+                if ( $size === 0 ) {
+                    $partial['threats'][] = array(
+                        'type'        => 'decoy_plugin',
+                        'severity'    => 'warning',
+                        'location'    => $rel,
+                        'description' => 'Empty decoy plugin file — part of scatter confusion technique (hex-suffix naming pattern)',
+                        'file'        => $file,
+                    );
+                    $partial['files_scanned']++;
+                } else {
+                    self::scan_file( $file, $partial );
+                }
+            }
+        }
+        closedir( $handle );
     }
 
     // ── Fake JPEG scan ───────────────────────────────────────────────
@@ -386,7 +443,12 @@ class Shield_Scanner {
 
     // ── System scanning ──────────────────────────────────────────────
     private static function scan_system( &$partial ) {
-        $known_hooks = array( 'taxonomy_cache_flush_c30d', 'role_cache_rebuild_0958', 'site_optimization_scan_76cc' );
+        $known_hooks = array(
+            'taxonomy_cache_flush_c30d',   // media-indexer RAT
+            'role_cache_rebuild_0958',     // object-cache-bridge RAT
+            'site_optimization_scan_76cc', // wp-session-handler RAT
+            'wp_c9cd735c_tick',            // Starter Render Loader / blockchain C2
+        );
         foreach ( $known_hooks as $hook ) {
             if ( wp_next_scheduled( $hook ) ) {
                 $partial['threats'][] = array(
