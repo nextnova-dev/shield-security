@@ -46,3 +46,54 @@ class Shield_Settings {
         exit;
     }
 }
+
+/**
+ * File lock settings — separate class to keep things clean
+ */
+class Shield_File_Lock {
+
+    public static function init() {
+        add_action( 'admin_init', array( __CLASS__, 'handle_post' ) );
+        // Enforce DISALLOW_FILE_MODS at runtime if enabled in DB
+        // (wp-config.php is the primary source, but this is a safety net)
+    }
+
+    public static function handle_post() {
+        if ( empty( $_POST['shield_lock_action'] ) ) return;
+        shield_admin_only();
+        if ( ! shield_verify_nonce() ) wp_die( 'Bad nonce' );
+
+        $action = sanitize_key( $_POST['shield_lock_action'] );
+
+        switch ( $action ) {
+
+            case 'enable_file_mods_lock':
+                $ok = shield_wpconfig_add_define( 'DISALLOW_FILE_MODS' );
+                $msg = $ok ? 'lock_enabled' : 'lock_error';
+                break;
+
+            case 'disable_file_mods_lock':
+                $ok = shield_wpconfig_remove_define( 'DISALLOW_FILE_MODS' );
+                // Also remove file edit lock if it was set separately
+                shield_wpconfig_remove_define( 'DISALLOW_FILE_EDIT' );
+                $msg = $ok ? 'lock_disabled' : 'lock_error';
+                break;
+
+            case 'enable_file_edit_lock':
+                $ok = shield_wpconfig_add_define( 'DISALLOW_FILE_EDIT' );
+                $msg = $ok ? 'edit_lock_enabled' : 'lock_error';
+                break;
+
+            case 'disable_file_edit_lock':
+                $ok = shield_wpconfig_remove_define( 'DISALLOW_FILE_EDIT' );
+                $msg = $ok ? 'edit_lock_disabled' : 'lock_error';
+                break;
+
+            default:
+                $msg = 'lock_error';
+        }
+
+        wp_redirect( add_query_arg( array( 'page' => 'shield-lockdown', 'msg' => $msg ), admin_url( 'admin.php' ) ) );
+        exit;
+    }
+}

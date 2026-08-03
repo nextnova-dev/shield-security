@@ -29,6 +29,11 @@ class Shield_Scanner {
             'Opt_Module' . '_20d2',
             'wp_2170b6' . 'c732_cfg',
             'gzinflate(@base64' . '_decode',
+            // Smart Resource Enhancer family (manifest.bin / 875L header)
+            'Query_Help' . 'er_770a',
+            'smart-resource-enhancer' . '-7659',
+            'manifest' . '.bin',
+            '_19274' . '633_LOADED',
             'base64_decode' . '(gzinflate',
             'eval'   . '(base64_decode',
             'eval'   . '(gzinflate',
@@ -74,6 +79,8 @@ class Shield_Scanner {
             // Smart Database Engine / decoy-scatter family
             'wp_2170b6c732%',
             'smart-database-engine%',
+            // Smart Resource Enhancer family
+            'smart-resource-enhancer-7659%',
         );
     }
 
@@ -266,7 +273,7 @@ class Shield_Scanner {
         }
     }
 
-    // ── Decoy / empty plugin file detection ─────────────────────────
+    // ── Decoy / empty plugin file detection + subdirectory plugin structure ─
     // Detects the scatter-decoy technique: folders of single-file plugins
     // where most are empty (0 bytes) to confuse admins, hiding one active
     // malware file among them. Flags the [word]-[word]-[4hex].php pattern.
@@ -298,6 +305,22 @@ class Shield_Scanner {
                 } else {
                     self::scan_file( $file, $partial );
                 }
+            }
+        }
+        // Also flag any plugin folder containing manifest.bin in a static/ subdir
+        // This is the smart-resource-enhancer family structure
+        $manifest_dirs = glob( WP_PLUGIN_DIR . '/*/static/manifest.bin' );
+        if ( $manifest_dirs ) {
+            foreach ( $manifest_dirs as $mfile ) {
+                $rel = str_replace( ABSPATH, '', $mfile );
+                if ( shield_path_is_excluded( $mfile ) ) continue;
+                $partial['threats'][] = array(
+                    'type'        => 'signature',
+                    'severity'    => 'critical',
+                    'location'    => $rel,
+                    'description' => 'Encrypted malware payload (manifest.bin) — smart-resource-enhancer family',
+                    'file'        => $mfile,
+                );
             }
         }
         closedir( $handle );
@@ -337,7 +360,14 @@ class Shield_Scanner {
                 if ( substr( $bytes, 0, 3 ) !== "\xFF\xD8\xFF" ) continue;
                 // Read full file and look for credential pattern: timestamp|ip|url
                 $fc = @file_get_contents( $file );
-                if ( $fc && preg_match( '/\d{10}\|[\d\.]+\|https?:\/\//', $fc ) ) {
+                // Check for old format: timestamp|ip|url
+                $is_cred_log = $fc && preg_match( '/\d{10}\|[\d\.]+\|https?:\/\//', $fc );
+                // Check for new format: base64 lines after JFIF header (smart-resource-enhancer family)
+                if ( ! $is_cred_log && $fc ) {
+                    $after_jfif = substr( $fc, 20 );
+                    $is_cred_log = (bool) preg_match( '/^[A-Za-z0-9+\/]{80,}={0,2}$/m', $after_jfif );
+                }
+                if ( $is_cred_log ) {
                     $rel = str_replace( ABSPATH, '', $file );
                     $partial['threats'][] = array(
                         'type'        => 'fake_jpg',

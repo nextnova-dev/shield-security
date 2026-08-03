@@ -3,7 +3,7 @@
  * Plugin Name: Shield Security
  * Plugin URI:  https://github.com/nextnova-dev/shield-security
  * Description: Professional WordPress security — malware scanner, login hardening, auto-updates.
- * Version:     1.2.2
+ * Version:     1.3.0
  * Author:      Next Nova Technologies
  * Author URI:  https://nextnovatechnologies.com
  * License:     GPL-2.0+
@@ -21,7 +21,7 @@ if ( version_compare( PHP_VERSION, '7.0.0', '<' ) ) {
     return;
 }
 
-define( 'SHIELD_VERSION',     '1.2.2' );
+define( 'SHIELD_VERSION',     '1.3.0' );
 define( 'SHIELD_SLUG',        'shield-security' );
 define( 'SHIELD_FILE',        __FILE__ );
 define( 'SHIELD_DIR',         plugin_dir_path( __FILE__ ) );
@@ -43,6 +43,7 @@ Shield_Settings::init();
 Shield_License::init();
 Shield_Updater::init();
 Shield_Login_Hardening::init();
+Shield_File_Lock::init();
 Shield_Admin_UI::init();
 
 register_activation_hook( __FILE__, array( 'Shield_Settings', 'activate' ) );

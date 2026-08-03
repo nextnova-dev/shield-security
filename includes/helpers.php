@@ -89,3 +89,83 @@ function shield_path_is_excluded( $path ) {
     }
     return false;
 }
+
+// ── File Modification Lock ────────────────────────────────────────────
+
+/**
+ * Read wp-config.php safely
+ */
+function shield_read_wpconfig() {
+    $path = ABSPATH . 'wp-config.php';
+    if ( ! file_exists( $path ) ) return false;
+    return @file_get_contents( $path );
+}
+
+/**
+ * Write wp-config.php safely — makes a backup first
+ */
+function shield_write_wpconfig( $content ) {
+    $path   = ABSPATH . 'wp-config.php';
+    $backup = ABSPATH . 'wp-config.shield-backup.php';
+    // Backup before writing
+    @copy( $path, $backup );
+    $result = @file_put_contents( $path, $content );
+    return $result !== false;
+}
+
+/**
+ * Check if a define is currently set in wp-config.php by Shield
+ */
+function shield_wpconfig_has_define( $constant ) {
+    $content = shield_read_wpconfig();
+    if ( ! $content ) return false;
+    // Look for our marker comment
+    return strpos( $content, '/* Shield Security: ' . $constant . ' */' ) !== false;
+}
+
+/**
+ * Add a define to wp-config.php (with Shield marker so we can remove it later)
+ * Inserts after the opening <?php tag
+ */
+function shield_wpconfig_add_define( $constant, $value = 'true' ) {
+    if ( shield_wpconfig_has_define( $constant ) ) return true; // already there
+
+    $content = shield_read_wpconfig();
+    if ( ! $content ) return false;
+
+    $line = "\ndefine( '" . $constant . "', " . $value . " ); /* Shield Security: " . $constant . " */\n";
+
+    // Insert right after <?php
+    $pos = strpos( $content, '<?php' );
+    if ( $pos === false ) return false;
+    $insert_at = $pos + 5; // after '<?php'
+    $content   = substr( $content, 0, $insert_at ) . $line . substr( $content, $insert_at );
+
+    return shield_write_wpconfig( $content );
+}
+
+/**
+ * Remove a Shield-managed define from wp-config.php
+ */
+function shield_wpconfig_remove_define( $constant ) {
+    $content = shield_read_wpconfig();
+    if ( ! $content ) return false;
+
+    // Remove the exact line we added (marker comment included)
+    $pattern = '/\r?\ndefine\s*\(\s*\'' . preg_quote( $constant, '/' ) . '\'\s*,\s*[^;]+\);\s*\/\* Shield Security: ' . preg_quote( $constant, '/' ) . ' \*\/\r?\n/';
+    $new_content = preg_replace( $pattern, "\n", $content );
+
+    if ( $new_content === $content ) return true; // wasn't there, that's fine
+    return shield_write_wpconfig( $new_content );
+}
+
+/**
+ * Get the current lock status from wp-config.php
+ */
+function shield_get_lock_status() {
+    return array(
+        'file_mods' => shield_wpconfig_has_define( 'DISALLOW_FILE_MODS' ),
+        'file_edit' => shield_wpconfig_has_define( 'DISALLOW_FILE_EDIT' ),
+        'wpconfig_writable' => is_writable( ABSPATH . 'wp-config.php' ),
+    );
+}

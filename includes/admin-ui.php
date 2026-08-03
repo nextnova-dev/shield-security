@@ -16,6 +16,7 @@ class Shield_Admin_UI {
         add_menu_page( 'Shield Security', '🛡 Shield', 'manage_options', 'shield-security', array( __CLASS__, 'page_dashboard' ), 'dashicons-shield-alt', 80 );
         add_submenu_page( 'shield-security', 'Dashboard',      'Dashboard',      'manage_options', 'shield-security', array( __CLASS__, 'page_dashboard' ) );
         add_submenu_page( 'shield-security', 'Scanner',        'Scanner',        'manage_options', 'shield-scanner',  array( __CLASS__, 'page_scanner' ) );
+        add_submenu_page( 'shield-security', '🔒 Lockdown',   '🔒 Lockdown',   'manage_options', 'shield-lockdown', array( __CLASS__, 'page_lockdown' ) );
         add_submenu_page( 'shield-security', 'Login Security', 'Login Security', 'manage_options', 'shield-login',    array( __CLASS__, 'page_login' ) );
         add_submenu_page( 'shield-security', 'Settings',       'Settings',       'manage_options', 'shield-settings', array( __CLASS__, 'page_settings' ) );
         add_submenu_page( 'shield-security', 'License',        'License',        'manage_options', 'shield-license',  array( __CLASS__, 'page_license' ) );
@@ -137,6 +138,7 @@ class Shield_Admin_UI {
         .sh-btn:hover{opacity:.88} .sh-btn:disabled{opacity:.45;cursor:not-allowed}
         .sh-btn-red{background:#e74c3c;color:#fff} .sh-btn-blue{background:#2271b1;color:#fff}
         .sh-btn-green{background:#27ae60;color:#fff} .sh-btn-grey{background:#f0f0f0;color:#333;border:1px solid #ccc}
+        .sh-btn-orange{background:#d97706;color:#fff} .sh-btn-orange:hover{opacity:.88}
         .sh-btn-orange{background:#e67e22;color:#fff}
         .sh-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
         .sh-stat{text-align:center;padding:20px;border-radius:8px;border:1px solid #e0e0e0}
@@ -377,6 +379,7 @@ class Shield_Admin_UI {
             <h2>⚡ Quick Actions</h2>
             <div class="sh-actions">
                 <a href="<?php echo admin_url( 'admin.php?page=shield-scanner' ); ?>"  class="sh-btn sh-btn-blue">🔍 Scanner</a>
+                <a href="<?php echo admin_url( 'admin.php?page=shield-lockdown' ); ?>" class="sh-btn sh-btn-blue">🔒 Lockdown</a>
                 <a href="<?php echo admin_url( 'admin.php?page=shield-login' ); ?>"    class="sh-btn sh-btn-blue">🔑 Login Security</a>
                 <a href="<?php echo admin_url( 'admin.php?page=shield-settings' ); ?>" class="sh-btn sh-btn-grey">⚙ Settings</a>
                 <?php if ( $update ) : ?>
@@ -764,6 +767,196 @@ class Shield_Admin_UI {
                 <tr><td>✔ Email threat alerts</td><td><span class="sh-badge sh-ok">Included</span></td></tr>
             </tbody></table>
         </div>
+        </div>
+        <?php
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // LOCKDOWN PAGE
+    // ═══════════════════════════════════════════════════════════════════
+    public static function page_lockdown() {
+        if ( ! current_user_can( 'manage_options' ) ) return;
+
+        $lock   = shield_get_lock_status();
+        $msg    = isset( $_GET['msg'] ) ? sanitize_key( $_GET['msg'] ) : '';
+        $fm_on  = $lock['file_mods'];   // DISALLOW_FILE_MODS active?
+        $fe_on  = $lock['file_edit'];   // DISALLOW_FILE_EDIT active?
+        $writable = $lock['wpconfig_writable'];
+        ?>
+        <div id="shield-wrap">
+        <h1>🔒 Lockdown — File Modification Controls</h1>
+        <p style="color:#666;margin-bottom:24px;">
+            Prevent WordPress from installing, updating, or deleting plugins and themes.
+            Toggle off temporarily when you need to add a legitimate plugin, then re-enable.
+        </p>
+
+        <?php if ( $msg === 'lock_enabled' ) : ?>
+            <div class="sh-saved">🔒 File modifications locked. No one can install, update, or delete plugins or themes.</div>
+        <?php elseif ( $msg === 'lock_disabled' ) : ?>
+            <div class="sh-saved" style="background:#fff3cd;color:#856404;">🔓 Lock removed. WordPress can now install and modify plugins and themes. Re-enable when done.</div>
+        <?php elseif ( $msg === 'edit_lock_enabled' ) : ?>
+            <div class="sh-saved">🔒 Theme/plugin file editor disabled.</div>
+        <?php elseif ( $msg === 'edit_lock_disabled' ) : ?>
+            <div class="sh-saved" style="background:#fff3cd;color:#856404;">🔓 Theme/plugin file editor re-enabled.</div>
+        <?php elseif ( $msg === 'lock_error' ) : ?>
+            <div class="sh-err-box">⚠ Could not write to wp-config.php. Check file permissions or add the define manually (see below).</div>
+        <?php endif; ?>
+
+        <?php if ( ! $writable ) : ?>
+        <div class="sh-err-box" style="margin-bottom:20px;">
+            ⚠ <strong>wp-config.php is not writable.</strong> Shield cannot toggle these settings automatically.
+            You can add/remove the defines manually — see the manual instructions at the bottom of this page.
+        </div>
+        <?php endif; ?>
+
+        <!-- Main Toggle: DISALLOW_FILE_MODS -->
+        <div class="sh-card" style="border-left: 4px solid <?php echo $fm_on ? '#27ae60' : '#e74c3c'; ?>;">
+            <h2>
+                <?php echo $fm_on ? '🔒' : '🔓'; ?> Plugin &amp; Theme Installation Lock
+                <?php if ( $fm_on ) : ?>
+                    <span class="sh-badge sh-ok">ACTIVE — Locked</span>
+                <?php else : ?>
+                    <span class="sh-badge sh-red">INACTIVE — Unlocked</span>
+                <?php endif; ?>
+            </h2>
+
+            <p style="font-size:13px;color:#555;margin-bottom:16px;">
+                Sets <code>DISALLOW_FILE_MODS</code> in <code>wp-config.php</code>.
+                When enabled, WordPress completely blocks:
+            </p>
+            <table class="sh-tbl" style="margin-bottom:16px;">
+                <tbody>
+                    <tr><td>🚫</td><td>Installing new plugins</td></tr>
+                    <tr><td>🚫</td><td>Installing new themes</td></tr>
+                    <tr><td>🚫</td><td>Updating existing plugins or themes</td></tr>
+                    <tr><td>🚫</td><td>Deleting plugins or themes via wp-admin</td></tr>
+                    <tr><td>🚫</td><td>Editing plugin or theme files via the built-in editor</td></tr>
+                    <tr><td>🚫</td><td>WordPress core auto-updates</td></tr>
+                </tbody>
+            </table>
+
+            <?php if ( $fm_on ) : ?>
+            <div style="background:#d4edda;border-radius:6px;padding:12px 16px;font-size:13px;margin-bottom:16px;">
+                ✔ <strong>Lock is active.</strong> Malware cannot self-install or reinstall via WordPress.
+                To add a legitimate plugin, click Unlock below, install the plugin, then re-lock immediately.
+            </div>
+            <form method="post">
+                <?php shield_nonce_field(); ?>
+                <input type="hidden" name="shield_lock_action" value="disable_file_mods_lock">
+                <button type="submit" class="sh-btn sh-btn-orange"
+                    onclick="return confirm('Unlock file modifications? Anyone with admin access will be able to install plugins. Re-lock as soon as you are done.')">
+                    🔓 Temporarily Unlock
+                </button>
+            </form>
+            <?php else : ?>
+            <div style="background:#fdecea;border-radius:6px;padding:12px 16px;font-size:13px;margin-bottom:16px;">
+                ⚠ <strong>Lock is off.</strong> Plugins and themes can be installed or modified freely.
+                Enable this lock to prevent malware reinstallation.
+            </div>
+            <form method="post">
+                <?php shield_nonce_field(); ?>
+                <input type="hidden" name="shield_lock_action" value="enable_file_mods_lock">
+                <button type="submit" class="sh-btn sh-btn-green"
+                    onclick="return confirm('Lock all plugin and theme modifications? WordPress updates will also be blocked while this is active.')">
+                    🔒 Enable Lock
+                </button>
+            </form>
+            <?php endif; ?>
+        </div>
+
+        <!-- Secondary Toggle: DISALLOW_FILE_EDIT only -->
+        <div class="sh-card" style="border-left: 4px solid <?php echo ( $fe_on || $fm_on ) ? '#27ae60' : '#ddd'; ?>;">
+            <h2>
+                <?php echo ( $fe_on || $fm_on ) ? '🔒' : '🔓'; ?> Theme &amp; Plugin File Editor
+                <?php if ( $fe_on || $fm_on ) : ?>
+                    <span class="sh-badge sh-ok">Disabled</span>
+                <?php else : ?>
+                    <span class="sh-badge sh-grey">Enabled (default)</span>
+                <?php endif; ?>
+            </h2>
+            <p style="font-size:13px;color:#555;margin-bottom:14px;">
+                Sets <code>DISALLOW_FILE_EDIT</code> in <code>wp-config.php</code>.
+                A lighter option — disables only the <strong>Appearance → Theme File Editor</strong>
+                and <strong>Plugins → Plugin File Editor</strong> menus, without blocking plugin/theme installation.
+                If the full lock above is active, the file editor is already blocked automatically.
+            </p>
+            <?php if ( $fm_on ) : ?>
+                <p style="font-size:13px;color:#888;font-style:italic;">This is already covered by the full lock above.</p>
+            <?php elseif ( $fe_on ) : ?>
+                <form method="post">
+                    <?php shield_nonce_field(); ?>
+                    <input type="hidden" name="shield_lock_action" value="disable_file_edit_lock">
+                    <button type="submit" class="sh-btn sh-btn-orange"
+                        onclick="return confirm('Re-enable the theme and plugin file editor?')">
+                        🔓 Re-enable File Editor
+                    </button>
+                </form>
+            <?php else : ?>
+                <form method="post">
+                    <?php shield_nonce_field(); ?>
+                    <input type="hidden" name="shield_lock_action" value="enable_file_edit_lock">
+                    <button type="submit" class="sh-btn sh-btn-blue">
+                        🔒 Disable File Editor Only
+                    </button>
+                </form>
+            <?php endif; ?>
+        </div>
+
+        <!-- Current wp-config.php status -->
+        <div class="sh-card">
+            <h2>📋 Current wp-config.php Status</h2>
+            <table class="sh-tbl"><tbody>
+                <tr>
+                    <td><code>DISALLOW_FILE_MODS</code></td>
+                    <td><?php echo $fm_on
+                        ? '<span class="sh-badge sh-ok">✔ Defined by Shield</span>'
+                        : '<span class="sh-badge sh-grey">Not set</span>'; ?></td>
+                    <td style="font-size:12px;color:#888;">Blocks all plugin/theme installs, updates, deletions</td>
+                </tr>
+                <tr>
+                    <td><code>DISALLOW_FILE_EDIT</code></td>
+                    <td><?php echo ( $fe_on || $fm_on )
+                        ? '<span class="sh-badge sh-ok">✔ ' . ( $fm_on ? 'Implied by FILE_MODS' : 'Defined by Shield' ) . '</span>'
+                        : '<span class="sh-badge sh-grey">Not set</span>'; ?></td>
+                    <td style="font-size:12px;color:#888;">Blocks theme/plugin file editor only</td>
+                </tr>
+                <tr>
+                    <td>wp-config.php writable</td>
+                    <td><?php echo $writable
+                        ? '<span class="sh-badge sh-ok">✔ Yes</span>'
+                        : '<span class="sh-badge sh-warn">⚠ No — manual edit required</span>'; ?></td>
+                    <td style="font-size:12px;color:#888;"></td>
+                </tr>
+            </tbody></table>
+        </div>
+
+        <!-- Manual instructions (shown always, important for non-writable configs) -->
+        <div class="sh-card" style="border-left:4px solid #2271b1;">
+            <h2>📖 Manual Instructions (if auto-toggle fails)</h2>
+            <p style="font-size:13px;color:#555;margin-bottom:12px;">If wp-config.php is not writable, add or remove these lines manually via SFTP:</p>
+            <p style="font-size:13px;font-weight:600;margin-bottom:6px;">To lock (add after <code>&lt;?php</code>):</p>
+            <pre style="background:#1e1e1e;color:#4ec9b0;padding:14px;border-radius:6px;font-size:12px;overflow-x:auto;">define( 'DISALLOW_FILE_MODS', true ); // Blocks all plugin/theme installs</pre>
+            <p style="font-size:13px;font-weight:600;margin-top:14px;margin-bottom:6px;">To unlock (remove that line):</p>
+            <p style="font-size:13px;color:#666;">Delete the <code>define( 'DISALLOW_FILE_MODS', true );</code> line from wp-config.php and save.</p>
+            <p style="font-size:13px;color:#888;margin-top:12px;">
+                ⚠ <strong>Important:</strong> While the lock is active, WordPress core security updates are also blocked.
+                Check for WordPress core updates manually and apply them via SFTP or WP-CLI if needed.
+                Alternatively, unlock → update core → re-lock.
+            </p>
+        </div>
+
+        <!-- Recommended workflow -->
+        <div class="sh-card" style="border-left:4px solid #27ae60;">
+            <h2>✅ Recommended Workflow</h2>
+            <table class="sh-tbl"><tbody>
+                <tr><td>1️⃣</td><td><strong>After malware cleanup:</strong> Enable the full lock immediately</td></tr>
+                <tr><td>2️⃣</td><td><strong>When you need to add a plugin:</strong> Click Temporarily Unlock → install plugin → re-lock</td></tr>
+                <tr><td>3️⃣</td><td><strong>For WordPress core updates:</strong> Unlock → update → re-lock</td></tr>
+                <tr><td>4️⃣</td><td><strong>For theme edits:</strong> Use a local editor + SFTP instead of the built-in editor</td></tr>
+                <tr><td>5️⃣</td><td>Keep lock ON at all times on client sites you manage remotely</td></tr>
+            </tbody></table>
+        </div>
+
         </div>
         <?php
     }
