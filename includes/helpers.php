@@ -169,3 +169,110 @@ function shield_get_lock_status() {
         'wpconfig_writable' => is_writable( ABSPATH . 'wp-config.php' ),
     );
 }
+
+
+// ── Uploads PHP Execution Blocking ───────────────────────────────────
+
+/**
+ * Check if PHP execution is blocked in uploads directory.
+ * Checks for both .htaccess (Apache) and a marker option (Nginx - manual).
+ */
+function shield_uploads_php_blocked() {
+    // Check .htaccess method
+    $htaccess = WP_CONTENT_DIR . '/uploads/.htaccess';
+    if ( file_exists( $htaccess ) ) {
+        $content = @file_get_contents( $htaccess );
+        if ( $content && strpos( $content, 'Shield Security: block PHP' ) !== false ) {
+            return 'htaccess';
+        }
+    }
+    // Check Nginx marker (set manually by admin)
+    if ( get_option( 'shield_nginx_uploads_blocked' ) === '1' ) {
+        return 'nginx';
+    }
+    return false;
+}
+
+/**
+ * Write .htaccess rule to block PHP execution in uploads (Apache/LiteSpeed).
+ */
+function shield_block_uploads_php_htaccess() {
+    $dir      = WP_CONTENT_DIR . '/uploads/';
+    $htaccess = $dir . '.htaccess';
+    $rule     = "# Shield Security: block PHP execution in uploads
+" .
+                "<Files *.php>
+" .
+                "    deny from all
+" .
+                "</Files>
+" .
+                "<FilesMatch "\.(php|php5|phtml|php7|phps)$">
+" .
+                "    Order Deny,Allow
+" .
+                "    Deny from all
+" .
+                "</FilesMatch>
+";
+
+    if ( ! is_dir( $dir ) ) return array( 'ok' => false, 'message' => 'Uploads directory not found.' );
+
+    // Check if already set by us
+    if ( file_exists( $htaccess ) ) {
+        $existing = @file_get_contents( $htaccess );
+        if ( $existing && strpos( $existing, 'Shield Security: block PHP' ) !== false ) {
+            return array( 'ok' => true, 'message' => 'Already blocked via .htaccess.' );
+        }
+        // Append to existing
+        $rule = "
+" . $rule;
+        $result = @file_put_contents( $htaccess, $existing . $rule );
+    } else {
+        $result = @file_put_contents( $htaccess, $rule );
+    }
+
+    if ( $result !== false ) {
+        shield_log( 'PHP execution blocked in uploads via .htaccess', 'info' );
+        return array( 'ok' => true, 'message' => 'PHP execution blocked in uploads (.htaccess written).' );
+    }
+    return array( 'ok' => false, 'message' => 'Could not write .htaccess — check directory permissions.' );
+}
+
+/**
+ * Remove the .htaccess PHP block rule (to allow legitimate maintenance).
+ */
+function shield_unblock_uploads_php_htaccess() {
+    $htaccess = WP_CONTENT_DIR . '/uploads/.htaccess';
+    if ( ! file_exists( $htaccess ) ) return array( 'ok' => true, 'message' => 'No .htaccess to remove.' );
+    $content = @file_get_contents( $htaccess );
+    if ( ! $content ) return array( 'ok' => false, 'message' => 'Cannot read .htaccess.' );
+    // Remove our block
+    $clean = preg_replace(
+        '/\n?# Shield Security: block PHP execution in uploads.*?<\/FilesMatch>\n?/s',
+        '',
+        $content
+    );
+    if ( trim( $clean ) === '' ) {
+        @unlink( $htaccess );
+        return array( 'ok' => true, 'message' => '.htaccess removed (was only our rule).' );
+    }
+    @file_put_contents( $htaccess, $clean );
+    return array( 'ok' => true, 'message' => 'PHP block rule removed from .htaccess.' );
+}
+
+/**
+ * Get the Nginx rule for manual addition (Kinsta users).
+ */
+function shield_get_nginx_uploads_rule() {
+    return "# Shield Security — block PHP in uploads (add to Nginx config)
+" .
+           "location ~* /wp-content/uploads/.*\.php$ {
+" .
+           "    deny all;
+" .
+           "    return 404;
+" .
+           "}
+";
+}

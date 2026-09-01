@@ -14,6 +14,9 @@ class Shield_Cleanup {
             case 'heuristic':
             case 'fake_jpg':
             case 'credential_log':
+            case 'webshell':
+            case 'decoy_plugin':
+            case 'payload_binary':
                 return self::remove_file( $threat );
             case 'database':
                 return self::remove_db_option( $threat );

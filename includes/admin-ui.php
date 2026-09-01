@@ -359,7 +359,7 @@ class Shield_Admin_UI {
         <div id="shield-wrap">
         <h1>🛡 Shield Security <span style="font-size:13px;font-weight:400;color:#888;">v<?php echo esc_html( SHIELD_VERSION ); ?></span></h1>
 
-        <div class="sh-grid">
+        <div class="sh-grid" style="grid-template-columns:repeat(4,1fr);">
             <div class="sh-stat <?php echo ( $threats === null ) ? '' : ( $threats > 0 ? 'sh-red' : 'sh-ok' ); ?>">
                 <div class="num"><?php echo $threats === null ? '—' : $threats; ?></div>
                 <div class="lbl">Threats Detected</div>
@@ -369,6 +369,11 @@ class Shield_Admin_UI {
                 <div class="num" style="font-size:18px;color:<?php echo esc_attr( $lic['color'] ); ?>"><?php echo esc_html( $lic['label'] ); ?></div>
                 <div class="lbl" style="color:#666;">License Status ↗</div>
             </a>
+            <?php $ub_status = shield_uploads_php_blocked(); ?>
+            <div class="sh-stat <?php echo $ub_status ? 'sh-ok' : 'sh-red'; ?>">
+                <div class="num" style="font-size:18px;"><?php echo $ub_status ? '🚫 Blocked' : '⚠ Open'; ?></div>
+                <div class="lbl"><a href="<?php echo admin_url('admin.php?page=shield-lockdown'); ?>" style="color:inherit;">Uploads PHP</a></div>
+            </div>
             <div class="sh-stat <?php echo $update ? 'sh-warn' : 'sh-ok'; ?>">
                 <div class="num" style="font-size:16px;"><?php echo $update ? 'v' . esc_html( $latest ) . ' ↑' : 'Up to date'; ?></div>
                 <div class="lbl">Plugin Version</div>
@@ -534,8 +539,12 @@ class Shield_Admin_UI {
                         </td>
                         <td><code><?php echo esc_html( $threat['type'] ); ?></code></td>
                         <td>
-                            <?php if ( $sev === 'critical' ) : ?>
-                                <span class="sh-badge sh-red">Critical</span>
+                            <?php
+                        $type_label = $threat['type'] ?? '';
+                        if ( $type_label === 'webshell' ) : ?>
+                            <span class="sh-badge sh-red">⚠ WEBSHELL</span>
+                        <?php elseif ( $sev === 'critical' ) : ?>
+                            <span class="sh-badge sh-red">Critical</span>
                             <?php else : ?>
                                 <span class="sh-badge sh-warn">Warning</span>
                             <?php endif; ?>
@@ -790,7 +799,15 @@ class Shield_Admin_UI {
             Toggle off temporarily when you need to add a legitimate plugin, then re-enable.
         </p>
 
-        <?php if ( $msg === 'lock_enabled' ) : ?>
+        <?php if ( $msg === 'uploads_blocked' ) : ?>
+            <div class="sh-saved">🚫 PHP execution blocked in uploads directory (.htaccess written).</div>
+        <?php elseif ( $msg === 'uploads_unblocked' ) : ?>
+            <div class="sh-saved" style="background:#fff3cd;color:#856404;">🔓 Uploads PHP block removed. Re-enable after maintenance.</div>
+        <?php elseif ( $msg === 'nginx_marked' ) : ?>
+            <div class="sh-saved">✔ Nginx block marked as configured.</div>
+        <?php elseif ( $msg === 'nginx_unmarked' ) : ?>
+            <div class="sh-saved" style="background:#d1ecf1;color:#0c5460;">Nginx block mark removed.</div>
+        <?php elseif ( $msg === 'lock_enabled' ) : ?>
             <div class="sh-saved">🔒 File modifications locked. No one can install, update, or delete plugins or themes.</div>
         <?php elseif ( $msg === 'lock_disabled' ) : ?>
             <div class="sh-saved" style="background:#fff3cd;color:#856404;">🔓 Lock removed. WordPress can now install and modify plugins and themes. Re-enable when done.</div>
@@ -902,6 +919,89 @@ class Shield_Admin_UI {
             <?php endif; ?>
         </div>
 
+        <!-- Uploads PHP Execution Block -->
+        <?php
+        $uploads_block_status = shield_uploads_php_blocked();
+        $is_kinsta = ( defined( 'KINSTA_CACHE_ZONE' ) || strpos( $_SERVER['SERVER_SOFTWARE'] ?? '', 'nginx' ) !== false );
+        ?>
+        <div class="sh-card" style="border-left: 4px solid <?php echo $uploads_block_status ? '#27ae60' : '#e74c3c'; ?>;">
+            <h2>
+                <?php echo $uploads_block_status ? '🚫' : '⚠️'; ?> Block PHP Execution in Uploads
+                <?php if ( $uploads_block_status === 'htaccess' ) : ?>
+                    <span class="sh-badge sh-ok">BLOCKED via .htaccess</span>
+                <?php elseif ( $uploads_block_status === 'nginx' ) : ?>
+                    <span class="sh-badge sh-ok">BLOCKED via Nginx (manual)</span>
+                <?php else : ?>
+                    <span class="sh-badge sh-red">NOT BLOCKED — Critical Risk</span>
+                <?php endif; ?>
+            </h2>
+
+            <p style="font-size:13px;color:#555;margin-bottom:12px;">
+                PHP files should <strong>never</strong> exist in <code>wp-content/uploads/</code>.
+                Attackers hide webshells there (like <code>wp-cache-stats.php</code>) because most
+                security plugins only scan — they don't block execution. This toggle prevents
+                any PHP file in uploads from ever running, even if one gets uploaded.
+            </p>
+
+            <?php if ( ! $uploads_block_status ) : ?>
+            <div style="background:#fdecea;border-radius:6px;padding:12px 16px;font-size:13px;margin-bottom:16px;">
+                ⚠ <strong>Currently unblocked.</strong> Any PHP file uploaded to <code>wp-content/uploads/</code>
+                can be executed by the attacker. This is how <code>wp-cache-stats.php</code> worked —
+                it restored deleted malware from the database on demand.
+            </div>
+            <?php endif; ?>
+
+            <?php if ( $is_kinsta ) : ?>
+            <!-- Kinsta uses Nginx — show manual rule + mark-as-done button -->
+            <div style="background:#f0f6ff;border:1px solid #b8d4f5;border-radius:6px;padding:14px 16px;margin-bottom:14px;">
+                <p style="font-size:13px;font-weight:600;margin:0 0 8px;">Kinsta / Nginx: Add this rule manually</p>
+                <pre style="background:#1e1e1e;color:#4ec9b0;padding:12px;border-radius:5px;font-size:12px;overflow-x:auto;margin:0;"><?php echo esc_html( shield_get_nginx_uploads_rule() ); ?></pre>
+                <p style="font-size:12px;color:#666;margin:8px 0 0;">
+                    In MyKinsta → Sites → your site → <strong>Nginx configuration</strong> → paste this rule → Save.
+                    Then click "Mark as configured" below.
+                </p>
+            </div>
+            <div class="sh-actions">
+                <?php if ( $uploads_block_status !== 'nginx' ) : ?>
+                <form method="post">
+                    <?php shield_nonce_field(); ?>
+                    <input type="hidden" name="shield_lock_action" value="mark_nginx_blocked">
+                    <button type="submit" class="sh-btn sh-btn-green">✔ Mark Nginx Rule as Configured</button>
+                </form>
+                <?php else : ?>
+                <form method="post">
+                    <?php shield_nonce_field(); ?>
+                    <input type="hidden" name="shield_lock_action" value="unmark_nginx_blocked">
+                    <button type="submit" class="sh-btn sh-btn-grey">Remove Mark</button>
+                </form>
+                <?php endif; ?>
+            </div>
+            <?php else : ?>
+            <!-- Apache/LiteSpeed — automatic .htaccess write -->
+            <div class="sh-actions">
+                <?php if ( ! $uploads_block_status ) : ?>
+                <form method="post">
+                    <?php shield_nonce_field(); ?>
+                    <input type="hidden" name="shield_lock_action" value="block_uploads_php">
+                    <button type="submit" class="sh-btn sh-btn-green"
+                        onclick="return confirm('Block PHP execution in uploads? This writes a .htaccess rule. No PHP files in uploads will be executable.')">
+                        🚫 Block PHP in Uploads
+                    </button>
+                </form>
+                <?php else : ?>
+                <form method="post">
+                    <?php shield_nonce_field(); ?>
+                    <input type="hidden" name="shield_lock_action" value="unblock_uploads_php">
+                    <button type="submit" class="sh-btn sh-btn-orange"
+                        onclick="return confirm('Remove the uploads PHP block? Only do this for maintenance, then re-enable immediately.')">
+                        🔓 Temporarily Unblock
+                    </button>
+                </form>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
+        </div>
+
         <!-- Current wp-config.php status -->
         <div class="sh-card">
             <h2>📋 Current wp-config.php Status</h2>
@@ -951,6 +1051,7 @@ class Shield_Admin_UI {
             <table class="sh-tbl"><tbody>
                 <tr><td>1️⃣</td><td><strong>After malware cleanup:</strong> Enable the full lock immediately</td></tr>
                 <tr><td>2️⃣</td><td><strong>When you need to add a plugin:</strong> Click Temporarily Unlock → install plugin → re-lock</td></tr>
+                <tr><td>2️⃣</td><td><strong>Block PHP in uploads:</strong> Enable the uploads block above — prevents webshell execution even if files slip through</td></tr>
                 <tr><td>3️⃣</td><td><strong>For WordPress core updates:</strong> Unlock → update → re-lock</td></tr>
                 <tr><td>4️⃣</td><td><strong>For theme edits:</strong> Use a local editor + SFTP instead of the built-in editor</td></tr>
                 <tr><td>5️⃣</td><td>Keep lock ON at all times on client sites you manage remotely</td></tr>

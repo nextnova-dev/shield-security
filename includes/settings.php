@@ -89,6 +89,26 @@ class Shield_File_Lock {
                 $msg = $ok ? 'edit_lock_disabled' : 'lock_error';
                 break;
 
+            case 'block_uploads_php':
+                $result = shield_block_uploads_php_htaccess();
+                $msg    = $result['ok'] ? 'uploads_blocked' : 'lock_error';
+                break;
+
+            case 'unblock_uploads_php':
+                $result = shield_unblock_uploads_php_htaccess();
+                $msg    = $result['ok'] ? 'uploads_unblocked' : 'lock_error';
+                break;
+
+            case 'mark_nginx_blocked':
+                update_option( 'shield_nginx_uploads_blocked', '1' );
+                $msg = 'nginx_marked';
+                break;
+
+            case 'unmark_nginx_blocked':
+                delete_option( 'shield_nginx_uploads_blocked' );
+                $msg = 'nginx_unmarked';
+                break;
+
             default:
                 $msg = 'lock_error';
         }
