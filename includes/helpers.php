@@ -199,22 +199,15 @@ function shield_uploads_php_blocked() {
 function shield_block_uploads_php_htaccess() {
     $dir      = WP_CONTENT_DIR . '/uploads/';
     $htaccess = $dir . '.htaccess';
-    $rule     = "# Shield Security: block PHP execution in uploads
-" .
-                "<Files *.php>
-" .
-                "    deny from all
-" .
-                "</Files>
-" .
-                "<FilesMatch "\.(php|php5|phtml|php7|phps)$">
-" .
-                "    Order Deny,Allow
-" .
-                "    Deny from all
-" .
-                "</FilesMatch>
-";
+    $rule     = '# Shield Security: block PHP execution in uploads' . "\n"
+                . '<Files *.php>' . "\n"
+                . '    deny from all' . "\n"
+                . '</Files>' . "\n"
+                . '<FilesMatch "\.(php|php5|phtml|php7|phps)$">' . "\n"
+                . '    Order Deny,Allow' . "\n"
+                . '    Deny from all' . "\n"
+                . '</FilesMatch>' . "\n";
+
 
     if ( ! is_dir( $dir ) ) return array( 'ok' => false, 'message' => 'Uploads directory not found.' );
 
@@ -265,14 +258,9 @@ function shield_unblock_uploads_php_htaccess() {
  * Get the Nginx rule for manual addition (Kinsta users).
  */
 function shield_get_nginx_uploads_rule() {
-    return "# Shield Security — block PHP in uploads (add to Nginx config)
-" .
-           "location ~* /wp-content/uploads/.*\.php$ {
-" .
-           "    deny all;
-" .
-           "    return 404;
-" .
-           "}
-";
+    return '# Shield Security - block PHP in uploads (add to Nginx config)' . "\n"
+           . 'location ~* /wp-content/uploads/.*\.php$ {' . "\n"
+           . '    deny all;' . "\n"
+           . '    return 404;' . "\n"
+           . '}' . "\n";
 }
