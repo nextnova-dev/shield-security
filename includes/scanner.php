@@ -32,6 +32,15 @@ class Shield_Scanner {
             'resources/config' . '.dat',
             'static/metadata' . '.cache',
             'cache/config' . '.dat',
+            // WordPress Defender / interseq.at family (credential harvester)
+            'interseq' . '.at',
+            'Wordpress_Defender_Core' . '_54',
+            'wordpress_defender' . '_opts_70',
+            'wordpress-defender' . '-389',
+            'kit_source' . 's',
+            // Generic XOR-URL-loader pattern used by this family
+            'read_pack' . '($row',
+            'login_enqueue' . '_scripts',   // malware hooking login page
             // Common malware patterns
             'base64_decode' . '(gzinflate', 'eval' . '(base64_decode',
             'eval' . '(gzinflate', 'str_rot13' . '(base64',
@@ -64,6 +73,9 @@ class Shield_Scanner {
             'wp_2170b6c732%', 'smart-database-engine%',
             // Smart Resource Enhancer
             'smart-resource-enhancer-7659%',
+            // WordPress Defender family
+            'wordpress_defender_opts%',
+            'wordpress_defender%',
             // New variants (nextnovadev)
             'advanced-health-scanner-a415%',
             // Uploads webshell restore mechanism
@@ -85,6 +97,8 @@ class Shield_Scanner {
             '/add_action\s*\(\s*[\'"]wp_footer[\'"].*\d{5,}/' => 'high-priority wp_footer hook',
             '/preg_replace\s*\([\'"]\/.*\/e[\'"]/'           => 'preg_replace /e (RCE)',
             '/String\.fromCharCode\s*\(/'                    => 'JS fromCharCode',
+            '/array_map\s*\(\s*[^)]+chr[^)]+\)/' => 'XOR-encoded URL via chr() byte array (obfuscated C2)',
+            '/implode[^;]+array_map[^;]+chr[^;]+\d\d\d/'        => 'XOR byte array URL encoding (malware pattern)',
             '/gzinflate\s*\(\s*@?base64_decode/'             => 'gzinflate+base64',
         );
     }
@@ -483,12 +497,25 @@ class Shield_Scanner {
             RecursiveIteratorIterator::LEAVES_ONLY
         );
 
+        $whitelist = self::get_uploads_php_whitelist();
+
         foreach ( $iterator as $file ) {
             if ( ! $file->isFile() ) continue;
             $path = $file->getPathname();
             $ext  = strtolower( $file->getExtension() );
             if ( $ext !== 'php' ) continue;
             if ( shield_path_is_excluded( $path ) ) continue;
+
+            // Check against built-in whitelist of known legitimate security/backup plugins
+            $norm_path = str_replace( '\\', '/', $path );
+            $skip = false;
+            foreach ( $whitelist as $wl ) {
+                if ( strpos( $norm_path, $wl ) !== false ) {
+                    $skip = true;
+                    break;
+                }
+            }
+            if ( $skip ) continue;
 
             $partial['files_scanned']++;
             $rel     = str_replace( ABSPATH, '', $path );
@@ -525,6 +552,23 @@ class Shield_Scanner {
                 'description' => $desc,
             );
         }
+    }
+
+
+    // Known legitimate PHP paths in uploads (security and backup plugins).
+    // Files matching these path segments are skipped by the uploads PHP scanner.
+    private static function get_uploads_php_whitelist() {
+        return array(
+            'uploads/sucuri/',           // Sucuri Scanner — vulnerability database
+            'uploads/mainwp/',           // MainWP — management data
+            'uploads/wordfence/',        // Wordfence — cache/data files
+            'uploads/wfcache/',          // Wordfence cache
+            'uploads/ithemes-security/', // iThemes / Solid Security
+            'uploads/backwpup/',         // BackWPup — backup plugin
+            'uploads/updraftplus/',      // UpdraftPlus — backup plugin
+            'uploads/wp-clone/',         // WP Clone backup
+            'uploads/boldgrid-backup/',  // BoldGrid Backup
+        );
     }
 
     private static function finalise( &$partial ) {

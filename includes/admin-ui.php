@@ -127,64 +127,127 @@ class Shield_Admin_UI {
         $ajax_nonce = wp_create_nonce( 'shield_ajax' );
         ?>
         <style>
-        #shield-wrap{max-width:960px;margin:30px auto;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-        .sh-card{background:#fff;border:1px solid #ddd;border-radius:8px;padding:24px;margin-bottom:24px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
-        .sh-card h2{margin-top:0;font-size:16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-        .sh-badge{display:inline-block;padding:3px 11px;border-radius:20px;font-size:12px;font-weight:700}
-        .sh-red{background:#fdecea;color:#c0392b} .sh-ok{background:#d4edda;color:#155724}
-        .sh-warn{background:#fff3cd;color:#856404} .sh-info{background:#d1ecf1;color:#0c5460}
-        .sh-grey{background:#f0f0f0;color:#555}
-        .sh-btn{display:inline-block;padding:9px 18px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;border:none;text-decoration:none}
-        .sh-btn:hover{opacity:.88} .sh-btn:disabled{opacity:.45;cursor:not-allowed}
-        .sh-btn-red{background:#e74c3c;color:#fff} .sh-btn-blue{background:#2271b1;color:#fff}
-        .sh-btn-green{background:#27ae60;color:#fff} .sh-btn-grey{background:#f0f0f0;color:#333;border:1px solid #ccc}
-        .sh-btn-orange{background:#d97706;color:#fff} .sh-btn-orange:hover{opacity:.88}
-        .sh-btn-orange{background:#e67e22;color:#fff}
-        .sh-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
-        .sh-stat{text-align:center;padding:20px;border-radius:8px;border:1px solid #e0e0e0}
-        .sh-stat .num{font-size:32px;font-weight:700;line-height:1}
-        .sh-stat .lbl{font-size:12px;color:#666;margin-top:6px}
+        /* ── NovaShield Design System ─────────────────────────────────── */
+        :root{
+            --ns-bg:#f0f4f8;--ns-surface:#fff;--ns-border:#e2e8f0;
+            --ns-blue:#2563eb;--ns-blue-lt:#eff6ff;--ns-blue-dk:#1e40af;
+            --ns-green:#16a34a;--ns-green-lt:#f0fdf4;
+            --ns-red:#dc2626;--ns-red-lt:#fef2f2;
+            --ns-orange:#d97706;--ns-orange-lt:#fffbeb;
+            --ns-grey:#64748b;--ns-text:#0f172a;--ns-muted:#94a3b8;
+            --ns-radius:10px;--ns-shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.06);
+            --ns-shadow-md:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.06);
+        }
+        #shield-wrap{max-width:980px;margin:24px auto;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--ns-text)}
+        #shield-wrap h1{font-size:22px;font-weight:700;margin:0 0 20px;display:flex;align-items:center;gap:10px;color:var(--ns-text)}
+        #shield-wrap h1 .ns-ver{font-size:12px;font-weight:400;color:var(--ns-muted);background:var(--ns-border);padding:2px 8px;border-radius:20px}
+        /* ── Cards ── */
+        .sh-card{background:var(--ns-surface);border:1px solid var(--ns-border);border-radius:var(--ns-radius);padding:22px 24px;margin-bottom:20px;box-shadow:var(--ns-shadow)}
+        .sh-card h2{margin:0 0 16px;font-size:14px;font-weight:600;color:var(--ns-text);display:flex;align-items:center;gap:8px;flex-wrap:wrap;text-transform:uppercase;letter-spacing:.4px}
+        .sh-card-row{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
+        @media(max-width:720px){.sh-card-row{grid-template-columns:1fr}}
+        /* ── Status tiles ── */
+        .ns-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+        @media(max-width:800px){.ns-tiles{grid-template-columns:repeat(2,1fr)}}
+        @media(max-width:480px){.ns-tiles{grid-template-columns:1fr}}
+        .ns-tile{background:var(--ns-surface);border:1px solid var(--ns-border);border-radius:var(--ns-radius);padding:18px 16px 14px;box-shadow:var(--ns-shadow);position:relative;text-decoration:none;display:block;transition:box-shadow .15s,transform .15s}
+        .ns-tile:hover{box-shadow:var(--ns-shadow-md);transform:translateY(-1px)}
+        .ns-tile-icon{font-size:18px;line-height:1}
+        .ns-tile-top{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+        .ns-tile-val{font-size:20px;font-weight:700;line-height:1.1;color:var(--ns-text)}
+        .ns-tile-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--ns-muted)}
+        .ns-tile-sub{font-size:11px;color:var(--ns-muted);margin-top:4px}
+        .ns-tile-dot{width:12px;height:12px;border-radius:50%;position:absolute;top:14px;right:14px}
+        .ns-tile.ok  {}
+        .ns-tile.warn{}
+        .ns-tile.bad {}
+        .ns-tile.info{}
+        .ns-tile.ok   .ns-tile-dot{background:var(--ns-green)}
+        .ns-tile.warn .ns-tile-dot{background:var(--ns-orange)}
+        .ns-tile.bad  .ns-tile-dot{background:var(--ns-red)}
+        .ns-tile.info .ns-tile-dot{background:var(--ns-blue)}
+        /* ── Security meter ── */
+        .ns-meter-wrap{margin-bottom:20px}
+        .ns-meter-header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:10px}
+        .ns-meter-score{font-size:42px;font-weight:800;line-height:1}
+        .ns-meter-grade{font-size:22px;font-weight:700;margin-left:6px}
+        .ns-meter-label{font-size:13px;color:var(--ns-muted);margin-bottom:4px;text-align:right}
+        .ns-meter-bar{height:10px;background:var(--ns-border);border-radius:6px;overflow:hidden;margin-bottom:16px}
+        .ns-meter-fill{height:100%;border-radius:6px;transition:width .6s ease}
+        .ns-meter-steps{display:flex;flex-direction:column;gap:8px}
+        .ns-step-row{display:flex;align-items:center;gap:10px;font-size:13px;padding:10px 14px;border-radius:8px;background:#f8fafc;border:1px solid var(--ns-border)}
+        .ns-step-row.done{background:var(--ns-green-lt);border-color:#bbf7d0}
+        .ns-step-row.todo{background:#fff;border-color:var(--ns-border)}
+        .ns-step-row.bad{background:var(--ns-red-lt);border-color:#fecaca}
+        .ns-step-icon{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+        .done .ns-step-icon{background:var(--ns-green);color:#fff}
+        .todo .ns-step-icon{background:var(--ns-border);color:var(--ns-muted)}
+        .bad  .ns-step-icon{background:var(--ns-red);color:#fff}
+        .ns-step-text{flex:1;color:var(--ns-text);font-weight:500}
+        .ns-step-action{font-size:11px;font-weight:600;color:var(--ns-blue);text-decoration:none;white-space:nowrap}
+        .ns-step-action:hover{text-decoration:underline}
+        .ns-step-pts{font-size:11px;color:var(--ns-muted);white-space:nowrap}
+        /* ── Buttons ── */
+        .sh-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;border:none;text-decoration:none;transition:opacity .15s,transform .1s}
+        .sh-btn:hover{opacity:.9;transform:translateY(-1px)} .sh-btn:disabled{opacity:.45;cursor:not-allowed}
+        .sh-btn-red{background:var(--ns-red);color:#fff} .sh-btn-blue{background:var(--ns-blue);color:#fff}
+        .sh-btn-green{background:var(--ns-green);color:#fff} .sh-btn-grey{background:#f1f5f9;color:#334155;border:1px solid var(--ns-border)}
+        .sh-btn-orange{background:var(--ns-orange);color:#fff}
+        /* ── Badges ── */
+        .sh-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.3px}
+        .sh-red{background:var(--ns-red-lt);color:var(--ns-red)} .sh-ok{background:var(--ns-green-lt);color:var(--ns-green)}
+        .sh-warn{background:var(--ns-orange-lt);color:var(--ns-orange)} .sh-info{background:var(--ns-blue-lt);color:var(--ns-blue)}
+        .sh-grey{background:#f1f5f9;color:var(--ns-grey)}
+        /* ── Tables ── */
         table.sh-tbl{width:100%;border-collapse:collapse;font-size:13px}
-        table.sh-tbl th{text-align:left;padding:9px 12px;background:#f7f7f7;border-bottom:2px solid #e2e2e2}
-        table.sh-tbl td{padding:9px 12px;border-bottom:1px solid #f0f0f0;vertical-align:top;word-break:break-all}
+        table.sh-tbl th{text-align:left;padding:9px 12px;background:#f8fafc;border-bottom:2px solid var(--ns-border);font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--ns-muted)}
+        table.sh-tbl td{padding:9px 12px;border-bottom:1px solid var(--ns-border);vertical-align:top;word-break:break-all}
         table.sh-tbl tr:last-child td{border-bottom:none}
+        /* ── Forms ── */
         .sh-field{margin-bottom:18px}
         .sh-field label{display:block;font-weight:600;font-size:13px;margin-bottom:5px}
-        .sh-field .desc{font-size:12px;color:#888;margin-top:4px}
-        .sh-field input[type=text],.sh-field input[type=email],.sh-field textarea{width:100%;max-width:420px;padding:8px 10px;border:1px solid #ccc;border-radius:5px;font-size:13px;box-sizing:border-box}
+        .sh-field .desc{font-size:12px;color:var(--ns-muted);margin-top:4px}
+        .sh-field input[type=text],.sh-field input[type=email],.sh-field textarea{width:100%;max-width:420px;padding:8px 10px;border:1px solid var(--ns-border);border-radius:6px;font-size:13px;box-sizing:border-box}
         .sh-field textarea{resize:vertical;max-width:100%;font-family:monospace}
-        .sh-saved{background:#d4edda;color:#155724;padding:10px 16px;border-radius:6px;margin-bottom:20px;font-size:13px;font-weight:600}
-        .sh-err-box{background:#fdecea;color:#c0392b;padding:10px 16px;border-radius:6px;margin-bottom:20px;font-size:13px}
+        .sh-saved{background:var(--ns-green-lt);color:var(--ns-green);padding:10px 16px;border-radius:7px;margin-bottom:20px;font-size:13px;font-weight:600;border:1px solid #bbf7d0}
+        .sh-err-box{background:var(--ns-red-lt);color:var(--ns-red);padding:10px 16px;border-radius:7px;margin-bottom:20px;font-size:13px;border:1px solid #fecaca}
         .sh-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;align-items:center}
-        /* Step progress */
+        /* ── Scanner ── */
         .sh-steps{list-style:none;margin:0;padding:0}
-        .sh-step{display:flex;align-items:center;gap:14px;padding:10px 14px;border-radius:7px;margin-bottom:5px;font-size:13px;background:#f9f9f9;border:1px solid #eee;transition:background .2s}
-        .sh-step.step-waiting{color:#aaa}
-        .sh-step.step-running{background:#f0f6ff;border-color:#b8d4f5;color:#1a4a8a;font-weight:600}
-        .sh-step.step-done{background:#f0fff4;border-color:#b7e4c7;color:#155724}
-        .sh-step.step-error{background:#fff0f0;border-color:#f5c6cb;color:#c0392b}
+        .sh-step{display:flex;align-items:center;gap:14px;padding:10px 14px;border-radius:7px;margin-bottom:5px;font-size:13px;background:#f8fafc;border:1px solid var(--ns-border);transition:background .2s}
+        .sh-step.step-waiting{color:var(--ns-muted)}
+        .sh-step.step-running{background:var(--ns-blue-lt);border-color:#bfdbfe;color:var(--ns-blue-dk);font-weight:600}
+        .sh-step.step-done{background:var(--ns-green-lt);border-color:#bbf7d0;color:#14532d}
+        .sh-step.step-error{background:var(--ns-red-lt);border-color:#fecaca;color:var(--ns-red)}
         .sh-step-icon{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
-        .step-waiting .sh-step-icon{background:#e5e5e5;color:#aaa}
-        .step-running .sh-step-icon{background:#2271b1;color:#fff}
-        .step-done    .sh-step-icon{background:#27ae60;color:#fff}
-        .step-error   .sh-step-icon{background:#e74c3c;color:#fff}
-        .sh-step-label{flex:1}
-        .sh-step-meta{font-size:11px;opacity:.7;white-space:nowrap}
-        .sh-step-threat{font-size:11px;font-weight:700;color:#c0392b;background:#fdecea;padding:1px 8px;border-radius:10px;margin-right:6px}
+        .step-waiting .sh-step-icon{background:var(--ns-border);color:var(--ns-muted)}
+        .step-running .sh-step-icon{background:var(--ns-blue);color:#fff}
+        .step-done    .sh-step-icon{background:var(--ns-green);color:#fff}
+        .step-error   .sh-step-icon{background:var(--ns-red);color:#fff}
+        .sh-step-label{flex:1}.sh-step-meta{font-size:11px;opacity:.7;white-space:nowrap}
+        .sh-step-threat{font-size:11px;font-weight:700;color:var(--ns-red);background:var(--ns-red-lt);padding:1px 8px;border-radius:10px;margin-right:6px}
         .sh-spin{display:inline-block;width:11px;height:11px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sh-spin .6s linear infinite}
         @keyframes sh-spin{to{transform:rotate(360deg)}}
-        .sh-overall-bar{height:5px;background:#e0e0e0;border-radius:3px;overflow:hidden;margin:14px 0 4px}
-        .sh-overall-fill{height:100%;background:linear-gradient(90deg,#2271b1,#27ae60);border-radius:3px;transition:width .4s ease;width:0}
-        .sh-scan-summary{font-size:13px;color:#555;min-height:18px}
-        /* Threat table */
-        .sh-threat-row-critical{background:#fff8f8}
-        .sh-threat-row-warning{background:#fffdf0}
+        .sh-overall-bar{height:6px;background:var(--ns-border);border-radius:4px;overflow:hidden;margin:14px 0 4px}
+        .sh-overall-fill{height:100%;background:linear-gradient(90deg,var(--ns-blue),var(--ns-green));border-radius:4px;transition:width .4s ease;width:0}
+        .sh-scan-summary{font-size:13px;color:var(--ns-muted);min-height:18px}
+        .sh-threat-row-critical{background:#fff8f8}.sh-threat-row-warning{background:#fffdf0}
         .sh-threat-check{width:32px;text-align:center}
-        .sh-sel-bar{background:#f0f6ff;border:1px solid #b8d4f5;border-radius:6px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px}
-        .sh-sel-count{font-weight:600;color:#2271b1}
+        .sh-sel-bar{background:var(--ns-blue-lt);border:1px solid #bfdbfe;border-radius:7px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px}
+        .sh-sel-count{font-weight:600;color:var(--ns-blue)}
         .sh-lic-box{border:2px solid;border-radius:8px;padding:20px;text-align:center;margin-bottom:24px}
-        code{background:#f4f4f4;padding:1px 5px;border-radius:3px;font-size:12px}
-        @media(max-width:700px){.sh-grid{grid-template-columns:1fr}}
+        code{background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:12px;font-family:monospace}
+        pre{background:#1e293b;color:#94d8fb;padding:14px;border-radius:7px;font-size:12px;overflow-x:auto}
+        /* ── Activity log ── */
+        .ns-log{list-style:none;margin:0;padding:0}
+        .ns-log li{display:flex;gap:12px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--ns-border);font-size:13px}
+        .ns-log li:last-child{border-bottom:none}
+        .ns-log-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
+        .ns-log-time{font-size:11px;color:var(--ns-muted);white-space:nowrap;min-width:100px}
+        /* Lockdown ── */
+        .ns-lock-indicator{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px}
+        .ns-lock-indicator.on{background:var(--ns-green-lt);color:var(--ns-green)}
+        .ns-lock-indicator.off{background:var(--ns-red-lt);color:var(--ns-red)}
         </style>
         <script>
         (function(){
@@ -257,12 +320,12 @@ class Shield_Admin_UI {
 
         function finish(tc){
             var fill = el('sh-overall-fill');
-            if (fill){ fill.style.width='100%'; fill.style.background='#27ae60'; }
+            if (fill){ fill.style.width='100%'; fill.style.background='var(--ns-green)'; }
             var sum = el('sh-scan-summary');
             var count = typeof tc !== 'undefined' ? tc : totalThreats;
             if (sum){
                 sum.textContent = 'Scan complete · ' + totalFiles + ' file(s) · ' + (count > 0 ? count + ' threat(s) found' : 'No threats ✔');
-                sum.style.color = count > 0 ? '#c0392b' : '#155724';
+                sum.style.color = count > 0 ? 'var(--ns-red)' : 'var(--ns-green)';
             }
             setTimeout(function(){
                 window.location.href = window.location.href.split('?')[0] + '?page=shield-scanner&scanned=1&threats=' + count;
@@ -290,13 +353,12 @@ class Shield_Admin_UI {
                 if (te) te.style.display='none';
             }
             var fill = el('sh-overall-fill');
-            if (fill){ fill.style.width='0'; fill.style.background='linear-gradient(90deg,#2271b1,#27ae60)'; }
+            if (fill){ fill.style.width='0'; fill.style.background='linear-gradient(90deg,var(--ns-blue),var(--ns-green))'; }
             var err = el('sh-scan-error');
             if (err) err.style.display='none';
             runStep(0);
         };
 
-        // Dismiss single threat via AJAX (no page reload, no nonce issue)
         window.shieldDismiss = function(btn, idx){
             if (!confirm('Dismiss this threat from the list? It will not be cleaned.')) return;
             btn.disabled=true; btn.textContent='…';
@@ -315,7 +377,6 @@ class Shield_Admin_UI {
             .catch(function(){ btn.disabled=false; btn.textContent='Dismiss'; });
         };
 
-        // Checkbox selection helpers
         window.shieldToggleAll = function(master){
             var boxes = document.querySelectorAll('.sh-threat-cb');
             for (var i=0; i<boxes.length; i++) boxes[i].checked = master.checked;
@@ -329,7 +390,6 @@ class Shield_Admin_UI {
             var cnt     = el('sh-sel-count');
             if (bar) bar.style.display = checked.length > 0 ? 'flex' : 'none';
             if (cnt) cnt.textContent   = checked.length + ' selected';
-            // Put selected indices into hidden inputs
             var form = document.getElementById('sh-bulk-form');
             if (!form) return;
             var old = form.querySelectorAll('input[name="threat_indices[]"]');
@@ -349,88 +409,235 @@ class Shield_Admin_UI {
     // DASHBOARD
     // ═══════════════════════════════════════════════════════════════════
     public static function page_dashboard() {
-        $scan    = Shield_Scanner::get_last_scan();
-        $lic     = Shield_License::get_status_label();
-        $threats = $scan ? intval( $scan['threat_count'] ) : null;
-        $release = Shield_Updater::get_latest_release();
-        $latest  = $release ? ltrim( $release['tag_name'], 'v' ) : SHIELD_VERSION;
-        $update  = version_compare( $latest, SHIELD_VERSION, '>' );
+        $scan     = Shield_Scanner::get_last_scan();
+        $settings = shield_get_settings();
+        $lic      = Shield_License::get_status_label();
+        $threats  = $scan ? intval( $scan['threat_count'] ) : null;
+        $release  = Shield_Updater::get_latest_release();
+        $latest   = $release ? ltrim( $release['tag_name'], 'v' ) : SHIELD_VERSION;
+        $update   = version_compare( $latest, SHIELD_VERSION, '>' );
+
+        // ── Security score ────────────────────────────────────────────
+        $lock_status      = shield_get_lock_status();
+        $uploads_blocked  = shield_uploads_php_blocked();
+        $login_slug       = ! empty( $settings['login_slug'] );
+        $file_mods_locked = $lock_status['file_mods'];
+        $no_threats       = ( $threats === 0 );
+        $scan_done        = ( $scan !== null );
+        $email_alerts     = ! empty( $settings['email_alerts'] );
+        $licensed         = shield_is_licensed();
+
+        // Points: each check worth a different weight
+        $checks = array(
+            array(
+                'key'    => 'scan',
+                'done'   => $scan_done && $no_threats,
+                'warn'   => $scan_done && ! $no_threats,
+                'label'  => $scan_done
+                             ? ( $no_threats ? 'No threats detected' : $threats . ' threat(s) detected — clean now' )
+                             : 'Run your first scan',
+                'action' => admin_url( 'admin.php?page=shield-scanner' ),
+                'action_label' => $scan_done ? ( $no_threats ? 'Scan Again' : 'Clean Now' ) : 'Run Scan',
+                'pts'    => 25,
+            ),
+            array(
+                'key'    => 'lockdown',
+                'done'   => $file_mods_locked,
+                'warn'   => false,
+                'label'  => $file_mods_locked ? 'Plugin installs locked (DISALLOW_FILE_MODS)' : 'Enable file modification lockdown',
+                'action' => admin_url( 'admin.php?page=shield-lockdown' ),
+                'action_label' => 'Lockdown',
+                'pts'    => 20,
+            ),
+            array(
+                'key'    => 'uploads',
+                'done'   => (bool) $uploads_blocked,
+                'warn'   => false,
+                'label'  => $uploads_blocked ? 'PHP execution blocked in uploads' : 'Block PHP execution in uploads',
+                'action' => admin_url( 'admin.php?page=shield-lockdown' ),
+                'action_label' => 'Fix Now',
+                'pts'    => 20,
+            ),
+            array(
+                'key'    => 'login',
+                'done'   => $login_slug,
+                'warn'   => false,
+                'label'  => $login_slug ? 'Custom login URL active' : 'Set a custom login URL',
+                'action' => admin_url( 'admin.php?page=shield-login' ),
+                'action_label' => 'Configure',
+                'pts'    => 20,
+            ),
+            array(
+                'key'    => 'alerts',
+                'done'   => $email_alerts,
+                'warn'   => false,
+                'label'  => $email_alerts ? 'Email threat alerts enabled' : 'Enable email threat alerts',
+                'action' => admin_url( 'admin.php?page=shield-settings' ),
+                'action_label' => 'Settings',
+                'pts'    => 15,
+            ),
+        );
+
+        $score = 0;
+        foreach ( $checks as $c ) {
+            if ( $c['done'] ) $score += $c['pts'];
+            elseif ( isset( $c['warn'] ) && $c['warn'] ) $score += intval( $c['pts'] / 2 );
+        }
+        $score = min( 100, $score );
+
+        if ( $score >= 80 )      { $grade = 'A'; $grade_color = '#16a34a'; $meter_color = '#16a34a'; $grade_label = 'Strong'; }
+        elseif ( $score >= 60 )  { $grade = 'B'; $grade_color = '#65a30d'; $meter_color = '#84cc16'; $grade_label = 'Good'; }
+        elseif ( $score >= 40 )  { $grade = 'C'; $grade_color = '#d97706'; $meter_color = '#f59e0b'; $grade_label = 'Fair'; }
+        else                     { $grade = 'D'; $grade_color = '#dc2626'; $meter_color = '#ef4444'; $grade_label = 'At Risk'; }
+
+        // ── Scan age ─────────────────────────────────────────────────
+        $scan_age_text = 'Never scanned';
+        $scan_age_class = 'bad';
+        if ( $scan ) {
+            $scanned_at = strtotime( $scan['completed_at'] );
+            $age_secs   = time() - $scanned_at;
+            $age_days   = floor( $age_secs / 86400 );
+            $age_hours  = floor( $age_secs / 3600 );
+            if ( $age_days >= 14 )     { $scan_age_text = $age_days . ' days ago'; $scan_age_class = 'bad'; }
+            elseif ( $age_days >= 7 )  { $scan_age_text = $age_days . ' days ago'; $scan_age_class = 'warn'; }
+            elseif ( $age_days >= 1 )  { $scan_age_text = $age_days . ' day' . ( $age_days > 1 ? 's' : '' ) . ' ago'; $scan_age_class = 'ok'; }
+            elseif ( $age_hours >= 1 ) { $scan_age_text = $age_hours . 'h ago'; $scan_age_class = 'ok'; }
+            else                       { $scan_age_text = 'Just now'; $scan_age_class = 'ok'; }
+        }
         ?>
         <div id="shield-wrap">
-        <h1>🛡 Shield Security <span style="font-size:13px;font-weight:400;color:#888;">v<?php echo esc_html( SHIELD_VERSION ); ?></span></h1>
+        <h1>🛡 NovaShield <span class="ns-ver">v<?php echo esc_html( SHIELD_VERSION ); ?></span></h1>
 
-        <div class="sh-grid" style="grid-template-columns:repeat(4,1fr);">
-            <div class="sh-stat <?php echo ( $threats === null ) ? '' : ( $threats > 0 ? 'sh-red' : 'sh-ok' ); ?>">
-                <div class="num"><?php echo $threats === null ? '—' : $threats; ?></div>
-                <div class="lbl">Threats Detected</div>
-            </div>
-            <a href="<?php echo admin_url( 'admin.php?page=shield-license' ); ?>"
-               class="sh-stat" style="border-color:<?php echo esc_attr( $lic['color'] ); ?>;text-decoration:none;display:block;">
-                <div class="num" style="font-size:18px;color:<?php echo esc_attr( $lic['color'] ); ?>"><?php echo esc_html( $lic['label'] ); ?></div>
-                <div class="lbl" style="color:#666;">License Status ↗</div>
+        <!-- ── Status Tiles ── -->
+        <div class="ns-tiles">
+
+            <!-- Scanner tile -->
+            <a href="<?php echo admin_url( 'admin.php?page=shield-scanner' ); ?>" class="ns-tile <?php echo $threats === null ? 'info' : ( $threats > 0 ? 'bad' : 'ok' ); ?>">
+                <div class="ns-tile-dot"></div>
+                <div class="ns-tile-top">
+                    <div class="ns-tile-icon">🔍</div>
+                    <div class="ns-tile-val"><?php echo $threats === null ? '—' : $threats; ?></div>
+                </div>
+                <div class="ns-tile-lbl">Threats</div>
+                <div class="ns-tile-sub"><?php echo esc_html( $scan_age_text ); ?></div>
             </a>
-            <?php $ub_status = shield_uploads_php_blocked(); ?>
-            <div class="sh-stat <?php echo $ub_status ? 'sh-ok' : 'sh-red'; ?>">
-                <div class="num" style="font-size:18px;"><?php echo $ub_status ? '🚫 Blocked' : '⚠ Open'; ?></div>
-                <div class="lbl"><a href="<?php echo admin_url('admin.php?page=shield-lockdown'); ?>" style="color:inherit;">Uploads PHP</a></div>
-            </div>
-            <div class="sh-stat <?php echo $update ? 'sh-warn' : 'sh-ok'; ?>">
-                <div class="num" style="font-size:16px;"><?php echo $update ? 'v' . esc_html( $latest ) . ' ↑' : 'Up to date'; ?></div>
-                <div class="lbl">Plugin Version</div>
-            </div>
+
+            <!-- Lockdown tile -->
+            <a href="<?php echo admin_url( 'admin.php?page=shield-lockdown' ); ?>" class="ns-tile <?php echo $file_mods_locked ? 'ok' : 'bad'; ?>">
+                <div class="ns-tile-dot"></div>
+                <div class="ns-tile-top">
+                    <div class="ns-tile-icon"><?php echo $file_mods_locked ? '🔒' : '🔓'; ?></div>
+                    <div class="ns-tile-val" style="font-size:15px;"><?php echo $file_mods_locked ? 'Locked' : 'Unlocked'; ?></div>
+                </div>
+                <div class="ns-tile-lbl">Lockdown</div>
+                <div class="ns-tile-sub"><?php echo $uploads_blocked ? 'Uploads blocked ✔' : 'Uploads open ⚠'; ?></div>
+            </a>
+
+            <!-- Login tile -->
+            <a href="<?php echo admin_url( 'admin.php?page=shield-login' ); ?>" class="ns-tile <?php echo $login_slug ? 'ok' : 'bad'; ?>">
+                <div class="ns-tile-dot"></div>
+                <div class="ns-tile-top">
+                    <div class="ns-tile-icon">🔑</div>
+                    <div class="ns-tile-val" style="font-size:15px;"><?php echo $login_slug ? 'Custom URL' : 'Default URL'; ?></div>
+                </div>
+                <div class="ns-tile-lbl">Login Security</div>
+                <div class="ns-tile-sub"><?php echo $login_slug ? 'wp-login.php hidden ✔' : 'wp-login.php exposed'; ?></div>
+            </a>
+
+            <!-- Version tile -->
+            <a href="<?php echo admin_url( 'update-core.php' ); ?>" class="ns-tile <?php echo $update ? 'warn' : 'ok'; ?>">
+                <div class="ns-tile-dot"></div>
+                <div class="ns-tile-top">
+                    <div class="ns-tile-icon">⚡</div>
+                    <div class="ns-tile-val" style="font-size:15px;">v<?php echo esc_html( SHIELD_VERSION ); ?></div>
+                </div>
+                <div class="ns-tile-lbl">Plugin Version</div>
+                <div class="ns-tile-sub"><?php echo $update ? 'v' . esc_html( $latest ) . ' available ↑' : 'Up to date ✔'; ?></div>
+            </a>
+
         </div>
 
-        <div class="sh-card">
-            <h2>⚡ Quick Actions</h2>
-            <div class="sh-actions">
-                <a href="<?php echo admin_url( 'admin.php?page=shield-scanner' ); ?>"  class="sh-btn sh-btn-blue">🔍 Scanner</a>
-                <a href="<?php echo admin_url( 'admin.php?page=shield-lockdown' ); ?>" class="sh-btn sh-btn-blue">🔒 Lockdown</a>
-                <a href="<?php echo admin_url( 'admin.php?page=shield-login' ); ?>"    class="sh-btn sh-btn-blue">🔑 Login Security</a>
-                <a href="<?php echo admin_url( 'admin.php?page=shield-settings' ); ?>" class="sh-btn sh-btn-grey">⚙ Settings</a>
-                <?php if ( $update ) : ?>
-                <a href="<?php echo admin_url( 'update-core.php' ); ?>" class="sh-btn sh-btn-green">⬆ Update to v<?php echo esc_html( $latest ); ?></a>
-                <?php endif; ?>
+        <!-- ── Two-column layout: Score + Activity ── -->
+        <div class="sh-card-row">
+
+            <!-- Security Score -->
+            <div class="sh-card">
+                <h2>📊 Security Score</h2>
+                <div class="ns-meter-wrap">
+                    <div class="ns-meter-header">
+                        <div>
+                            <span class="ns-meter-score" style="color:<?php echo $grade_color; ?>"><?php echo $score; ?></span>
+                            <span class="ns-meter-grade" style="color:<?php echo $grade_color; ?>">/ 100</span>
+                        </div>
+                        <div>
+                            <div class="ns-meter-label" style="color:<?php echo $grade_color; ?>;font-weight:700;font-size:16px;"><?php echo $grade_label; ?></div>
+                            <div class="ns-meter-label">Grade <?php echo $grade; ?></div>
+                        </div>
+                    </div>
+                    <div class="ns-meter-bar">
+                        <div class="ns-meter-fill" style="width:<?php echo $score; ?>%;background:<?php echo $meter_color; ?>;"></div>
+                    </div>
+                    <div class="ns-meter-steps">
+                        <?php foreach ( $checks as $c ) :
+                            $row_class = $c['done'] ? 'done' : ( ( isset( $c['warn'] ) && $c['warn'] ) ? 'bad' : 'todo' );
+                            $icon      = $c['done'] ? '✔' : ( ( isset( $c['warn'] ) && $c['warn'] ) ? '!' : '○' );
+                        ?>
+                        <div class="ns-step-row <?php echo $row_class; ?>">
+                            <div class="ns-step-icon"><?php echo $icon; ?></div>
+                            <div class="ns-step-text"><?php echo esc_html( $c['label'] ); ?></div>
+                            <?php if ( ! $c['done'] ) : ?>
+                            <a href="<?php echo esc_url( $c['action'] ); ?>" class="ns-step-action"><?php echo esc_html( $c['action_label'] ); ?> →</a>
+                            <?php endif; ?>
+                            <div class="ns-step-pts"><?php echo $c['pts']; ?>pts</div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
             </div>
-        </div>
 
-        <div class="sh-card">
-            <h2>📋 Recent Activity</h2>
-            <?php $logs = get_option( 'shield_scan_log', array() ); ?>
-            <?php if ( empty( $logs ) ) : ?>
-                <p style="color:#888;">No activity yet. Run a scan to get started.</p>
-            <?php else : ?>
-            <table class="sh-tbl"><thead><tr><th>Time</th><th>Level</th><th>Message</th></tr></thead><tbody>
-            <?php foreach ( array_slice( $logs, 0, 15 ) as $entry ) : ?>
-                <tr>
-                    <td style="white-space:nowrap;color:#888;"><?php echo esc_html( $entry['time'] ); ?></td>
-                    <td><span class="sh-badge <?php echo $entry['level']==='warn'?'sh-warn':'sh-info'; ?>"><?php echo esc_html( strtoupper( $entry['level'] ) ); ?></span></td>
-                    <td><?php echo esc_html( $entry['message'] ); ?></td>
-                </tr>
-            <?php endforeach; ?>
-            </tbody></table>
-            <?php endif; ?>
-        </div>
+            <!-- Recent Activity + Quick Actions -->
+            <div>
+                <div class="sh-card" style="margin-bottom:14px;">
+                    <h2>⚡ Quick Actions</h2>
+                    <div class="sh-actions" style="margin-top:0;">
+                        <a href="<?php echo admin_url( 'admin.php?page=shield-scanner' ); ?>"  class="sh-btn sh-btn-blue">🔍 Run Scan</a>
+                        <a href="<?php echo admin_url( 'admin.php?page=shield-lockdown' ); ?>" class="sh-btn sh-btn-<?php echo $file_mods_locked ? 'grey' : 'orange'; ?>">🔒 Lockdown</a>
+                        <a href="<?php echo admin_url( 'admin.php?page=shield-login' ); ?>"    class="sh-btn sh-btn-grey">🔑 Login Security</a>
+                        <a href="<?php echo admin_url( 'admin.php?page=shield-settings' ); ?>" class="sh-btn sh-btn-grey">⚙ Settings</a>
+                        <?php if ( $update ) : ?>
+                        <a href="<?php echo admin_url( 'update-core.php' ); ?>" class="sh-btn sh-btn-green">⬆ Update</a>
+                        <?php endif; ?>
+                    </div>
+                </div>
 
-        <?php if ( $scan ) : ?>
-        <div class="sh-card">
-            <h2>🕐 Last Scan</h2>
-            <p style="font-size:13px;color:#666;">
-                Completed: <strong><?php echo esc_html( $scan['completed_at'] ); ?></strong> &nbsp;·&nbsp;
-                Files: <strong><?php echo number_format( $scan['files_scanned'] ); ?></strong> &nbsp;·&nbsp;
-                DB rows: <strong><?php echo number_format( $scan['db_rows_scanned'] ); ?></strong>
-            </p>
-            <?php if ( $scan['threat_count'] > 0 ) : ?>
-                <span class="sh-badge sh-red">⚠ <?php echo intval( $scan['threat_count'] ); ?> active threat(s)</span>
-                &nbsp; <a href="<?php echo admin_url( 'admin.php?page=shield-scanner' ); ?>">View &amp; clean →</a>
-            <?php else : ?>
-                <span class="sh-badge sh-ok">✔ No threats found</span>
-            <?php endif; ?>
+                <div class="sh-card">
+                    <h2>📋 Recent Activity</h2>
+                    <?php $logs = get_option( 'shield_scan_log', array() ); ?>
+                    <?php if ( empty( $logs ) ) : ?>
+                        <p style="color:var(--ns-muted);font-size:13px;margin:0;">No activity yet. Run a scan to get started.</p>
+                    <?php else : ?>
+                    <ul class="ns-log">
+                        <?php foreach ( array_reverse( array_slice( $logs, -8 ) ) as $entry ) :
+                            $lvl = $entry['level'] ?? 'info';
+                            $dot_color = ( $lvl === 'warn' ) ? 'var(--ns-orange)' : ( ( $lvl === 'error' ) ? 'var(--ns-red)' : 'var(--ns-green)' );
+                            $ts  = strtotime( $entry['time'] ?? '' );
+                            $ago = $ts ? human_time_diff( $ts, time() ) . ' ago' : '';
+                        ?>
+                        <li>
+                            <div class="ns-log-dot" style="background:<?php echo $dot_color; ?>"></div>
+                            <div style="flex:1;font-size:13px;"><?php echo esc_html( $entry['message'] ?? '' ); ?></div>
+                            <div class="ns-log-time"><?php echo esc_html( $ago ); ?></div>
+                        </li>
+                        <?php endforeach; ?>
+                    </ul>
+                    <?php endif; ?>
+                </div>
+            </div>
+
         </div>
-        <?php endif; ?>
         </div>
         <?php
     }
-
     // ═══════════════════════════════════════════════════════════════════
     // SCANNER PAGE
     // ═══════════════════════════════════════════════════════════════════

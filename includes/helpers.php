@@ -1,6 +1,7 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 
+if ( ! function_exists( 'shield_get_settings' ) ) {
 function shield_get_settings() {
     $defaults = array(
         'login_slug'        => '',
@@ -14,16 +15,22 @@ function shield_get_settings() {
     $saved = get_option( SHIELD_OPT, array() );
     return array_merge( $defaults, $saved );
 }
+}
 
+if ( ! function_exists( 'shield_save_settings' ) ) {
 function shield_save_settings( $data ) {
     $current = shield_get_settings();
     update_option( SHIELD_OPT, array_merge( $current, $data ) );
 }
+}
 
+if ( ! function_exists( 'shield_is_licensed' ) ) {
 function shield_is_licensed() {
     return Shield_License::is_valid();
 }
+}
 
+if ( ! function_exists( 'shield_log' ) ) {
 function shield_log( $message, $level = 'info' ) {
     $logs = get_option( 'shield_scan_log', array() );
     array_unshift( $logs, array(
@@ -33,7 +40,9 @@ function shield_log( $message, $level = 'info' ) {
     ) );
     update_option( 'shield_scan_log', array_slice( $logs, 0, 200 ) );
 }
+}
 
+if ( ! function_exists( 'shield_send_alert' ) ) {
 function shield_send_alert( $subject, $body ) {
     $settings = shield_get_settings();
     if ( $settings['email_alerts'] !== '1' ) return;
@@ -42,24 +51,32 @@ function shield_send_alert( $subject, $body ) {
     $site = get_bloginfo( 'name' );
     wp_mail( $email, "[Shield Security] [{$site}] {$subject}", $body );
 }
+}
 
+if ( ! function_exists( 'shield_nonce_field' ) ) {
 function shield_nonce_field() {
     wp_nonce_field( 'shield_action', 'shield_nonce' );
 }
+}
 
+if ( ! function_exists( 'shield_verify_nonce' ) ) {
 function shield_verify_nonce() {
     if ( ! isset( $_POST['shield_nonce'] ) ) return false;
     return (bool) wp_verify_nonce( sanitize_key( $_POST['shield_nonce'] ), 'shield_action' );
 }
+}
 
+if ( ! function_exists( 'shield_admin_only' ) ) {
 function shield_admin_only() {
     if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
+}
 }
 
 /**
  * Get list of paths excluded from scanning (plugin's own dir is always excluded).
  * Returns array of normalised absolute paths.
  */
+if ( ! function_exists( 'shield_get_excluded_paths' ) ) {
 function shield_get_excluded_paths() {
     // Always exclude own plugin directory
     $excluded = array( rtrim( str_replace( '\\', '/', SHIELD_DIR ), '/' ) );
@@ -81,7 +98,9 @@ function shield_get_excluded_paths() {
     }
     return array_unique( $excluded );
 }
+}
 
+if ( ! function_exists( 'shield_path_is_excluded' ) ) {
 function shield_path_is_excluded( $path ) {
     $path = rtrim( str_replace( '\\', '/', $path ), '/' );
     foreach ( shield_get_excluded_paths() as $ex ) {
@@ -89,21 +108,25 @@ function shield_path_is_excluded( $path ) {
     }
     return false;
 }
+}
 
 // ── File Modification Lock ────────────────────────────────────────────
 
 /**
  * Read wp-config.php safely
  */
+if ( ! function_exists( 'shield_read_wpconfig' ) ) {
 function shield_read_wpconfig() {
     $path = ABSPATH . 'wp-config.php';
     if ( ! file_exists( $path ) ) return false;
     return @file_get_contents( $path );
 }
+}
 
 /**
  * Write wp-config.php safely — makes a backup first
  */
+if ( ! function_exists( 'shield_write_wpconfig' ) ) {
 function shield_write_wpconfig( $content ) {
     $path   = ABSPATH . 'wp-config.php';
     $backup = ABSPATH . 'wp-config.shield-backup.php';
@@ -112,21 +135,25 @@ function shield_write_wpconfig( $content ) {
     $result = @file_put_contents( $path, $content );
     return $result !== false;
 }
+}
 
 /**
  * Check if a define is currently set in wp-config.php by Shield
  */
+if ( ! function_exists( 'shield_wpconfig_has_define' ) ) {
 function shield_wpconfig_has_define( $constant ) {
     $content = shield_read_wpconfig();
     if ( ! $content ) return false;
     // Look for our marker comment
     return strpos( $content, '/* Shield Security: ' . $constant . ' */' ) !== false;
 }
+}
 
 /**
  * Add a define to wp-config.php (with Shield marker so we can remove it later)
  * Inserts after the opening <?php tag
  */
+if ( ! function_exists( 'shield_wpconfig_add_define' ) ) {
 function shield_wpconfig_add_define( $constant, $value = 'true' ) {
     if ( shield_wpconfig_has_define( $constant ) ) return true; // already there
 
@@ -143,10 +170,12 @@ function shield_wpconfig_add_define( $constant, $value = 'true' ) {
 
     return shield_write_wpconfig( $content );
 }
+}
 
 /**
  * Remove a Shield-managed define from wp-config.php
  */
+if ( ! function_exists( 'shield_wpconfig_remove_define' ) ) {
 function shield_wpconfig_remove_define( $constant ) {
     $content = shield_read_wpconfig();
     if ( ! $content ) return false;
@@ -158,16 +187,19 @@ function shield_wpconfig_remove_define( $constant ) {
     if ( $new_content === $content ) return true; // wasn't there, that's fine
     return shield_write_wpconfig( $new_content );
 }
+}
 
 /**
  * Get the current lock status from wp-config.php
  */
+if ( ! function_exists( 'shield_get_lock_status' ) ) {
 function shield_get_lock_status() {
     return array(
         'file_mods' => shield_wpconfig_has_define( 'DISALLOW_FILE_MODS' ),
         'file_edit' => shield_wpconfig_has_define( 'DISALLOW_FILE_EDIT' ),
         'wpconfig_writable' => is_writable( ABSPATH . 'wp-config.php' ),
     );
+}
 }
 
 
@@ -177,6 +209,7 @@ function shield_get_lock_status() {
  * Check if PHP execution is blocked in uploads directory.
  * Checks for both .htaccess (Apache) and a marker option (Nginx - manual).
  */
+if ( ! function_exists( 'shield_uploads_php_blocked' ) ) {
 function shield_uploads_php_blocked() {
     // Check .htaccess method
     $htaccess = WP_CONTENT_DIR . '/uploads/.htaccess';
@@ -192,10 +225,12 @@ function shield_uploads_php_blocked() {
     }
     return false;
 }
+}
 
 /**
  * Write .htaccess rule to block PHP execution in uploads (Apache/LiteSpeed).
  */
+if ( ! function_exists( 'shield_block_uploads_php_htaccess' ) ) {
 function shield_block_uploads_php_htaccess() {
     $dir      = WP_CONTENT_DIR . '/uploads/';
     $htaccess = $dir . '.htaccess';
@@ -231,10 +266,12 @@ function shield_block_uploads_php_htaccess() {
     }
     return array( 'ok' => false, 'message' => 'Could not write .htaccess — check directory permissions.' );
 }
+}
 
 /**
  * Remove the .htaccess PHP block rule (to allow legitimate maintenance).
  */
+if ( ! function_exists( 'shield_unblock_uploads_php_htaccess' ) ) {
 function shield_unblock_uploads_php_htaccess() {
     $htaccess = WP_CONTENT_DIR . '/uploads/.htaccess';
     if ( ! file_exists( $htaccess ) ) return array( 'ok' => true, 'message' => 'No .htaccess to remove.' );
@@ -253,14 +290,17 @@ function shield_unblock_uploads_php_htaccess() {
     @file_put_contents( $htaccess, $clean );
     return array( 'ok' => true, 'message' => 'PHP block rule removed from .htaccess.' );
 }
+}
 
 /**
  * Get the Nginx rule for manual addition (Kinsta users).
  */
+if ( ! function_exists( 'shield_get_nginx_uploads_rule' ) ) {
 function shield_get_nginx_uploads_rule() {
     return '# Shield Security - block PHP in uploads (add to Nginx config)' . "\n"
            . 'location ~* /wp-content/uploads/.*\.php$ {' . "\n"
            . '    deny all;' . "\n"
            . '    return 404;' . "\n"
            . '}' . "\n";
+}
 }
