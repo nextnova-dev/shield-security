@@ -157,6 +157,20 @@ if ( ! function_exists( 'shield_wpconfig_add_define' ) ) {
 function shield_wpconfig_add_define( $constant, $value = 'true' ) {
     if ( shield_wpconfig_has_define( $constant ) ) return true; // already there
 
+    // Check if already defined by anyone else (Kinsta cleanup, other plugins)
+    $content = shield_read_wpconfig();
+    if ( $content ) {
+        $already = preg_match(
+            '/define\s*\(\s*[\'"]' . preg_quote( $constant, '/' ) . '[\'"]/',
+            $content
+        );
+        if ( $already ) {
+            shield_log( $constant . ' already defined in wp-config.php — skipping.', 'info' );
+            return true; // treat as success — constant IS set, just not by us
+        }
+    }
+
+
     $content = shield_read_wpconfig();
     if ( ! $content ) return false;
 

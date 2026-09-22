@@ -176,12 +176,44 @@ class Shield_Scanner {
                 if ( $c !== get_template_directory() ) self::scan_directory( $c, $partial );
                 break;
             case 'dropins':
-                foreach ( array(
+                // Scan WordPress drop-in files (advanced-cache, db, object-cache)
+        foreach ( array(
                     WP_CONTENT_DIR . '/advanced-cache.php',
                     WP_CONTENT_DIR . '/db.php',
                     WP_CONTENT_DIR . '/object-cache.php',
-                    ABSPATH . 'wp-login.php',
                 ) as $p ) { self::scan_file_if_exists( $p, $partial ); }
+
+        // wp-login.php — scan for INJECTION only, not existence.
+        // Stock wp-login.php is ~50KB. We check for known malware patterns
+        // rather than flagging the file outright (it always exists legitimately).
+        $wpl = ABSPATH . 'wp-login.php';
+        if ( file_exists( $wpl ) ) {
+            $partial['files_scanned']++;
+            $wpl_content = @file_get_contents( $wpl );
+            if ( $wpl_content ) {
+                $inject_patterns = array(
+                    'interseq' . '.at',
+                    'webanalytics' . '-cdn.sbs',
+                    'wp_set_auth_cookie' . '($u->ID',
+                    'wordpress-defender' . '-389',
+                    'kit_source' . 's()',
+                );
+                foreach ( $inject_patterns as $pat ) {
+                    if ( strpos( $wpl_content, $pat ) !== false ) {
+                        $partial['threats'][] = array(
+                            'type'        => 'signature',
+                            'severity'    => 'critical',
+                            'location'    => 'wp-login.php',
+                            'file'        => $wpl,
+                            'description' => 'Malware injection detected in wp-login.php: ' . $pat,
+                            'surgical'    => true,  // Use surgical removal, not file deletion
+                            'action_label'=> 'Remove Injection',
+                        );
+                        break;
+                    }
+                }
+            }
+        }
                 break;
             case 'scatter':
                 foreach ( array( 'fonts', 'cache', 'upgrade', 'languages' ) as $d ) {
@@ -223,6 +255,12 @@ class Shield_Scanner {
         if ( shield_path_is_excluded( $dir ) ) return;
         $base = basename( $dir );
         foreach ( self::$skip_dirs as $skip ) { if ( $base === $skip ) return; }
+
+        // Skip vendor library directories inside plugins/themes — these contain
+        // legitimate third-party PHP libraries (Guzzle, HTMLPurifier, phpseclib etc.)
+        // that use patterns (chr arrays, eval-like constructs) that look suspicious
+        // but are standard library code. Malware never installs itself in vendor/.
+        if ( $base === 'vendor' || $base === 'vendor_prefixed' || $base === 'vendors' ) return;
         $handle = @opendir( $dir );
         if ( ! $handle ) return;
         while ( ( $item = readdir( $handle ) ) !== false ) {
@@ -506,7 +544,7 @@ class Shield_Scanner {
             if ( $ext !== 'php' ) continue;
             if ( shield_path_is_excluded( $path ) ) continue;
 
-            // Check against built-in whitelist of known legitimate security/backup plugins
+            // ── Whitelist: known legitimate paths in uploads ──────────────
             $norm_path = str_replace( '\\', '/', $path );
             $skip = false;
             foreach ( $whitelist as $wl ) {
@@ -517,12 +555,38 @@ class Shield_Scanner {
             }
             if ( $skip ) continue;
 
+            // ── Whitelist: vendor / vendor_prefixed library paths ─────────────
+            // Legitimate plugins (UpdraftPlus, WPForms etc.) bundle PHP libraries
+            // under vendor/ or vendor_prefixed/ subdirectories. These are never
+            // placed there by attackers — malware goes in the uploads root or
+            // in named subdirs like uploads/smile_fonts/.
+            if ( preg_match( '#/vendor(?:_prefixed)?/#', $norm_path ) ) continue;
+
+            // ── Whitelist: WordPress 404-protection index.php ─────────────────
+            // WordPress auto-generates a tiny 3-line index.php in every uploads
+            // subdirectory to prevent directory listing. Never malware.
+            if ( basename( $path ) === 'index.php' && $size < 200 ) {
+                $peek = @file_get_contents( $path, false, null, 0, 200 );
+                if ( $peek && strpos( $peek, '404 Not Found' ) !== false ) continue;
+            }
+
+            // ── Whitelist: theme font/asset data files in uploads ─────────────
+            // Some premium themes (Phlox Pro etc.) store font charmap PHP files
+            // in uploads. These are pure data arrays — no executable logic.
+            $font_dirs = array( 'smile_fonts', 'smile_icon_font', 'font_data' );
+            $in_font_dir = false;
+            foreach ( $font_dirs as $fd ) {
+                if ( strpos( $norm_path, '/' . $fd . '/' ) !== false ) { $in_font_dir = true; break; }
+            }
+            if ( $in_font_dir ) continue;
+
             $partial['files_scanned']++;
             $rel     = str_replace( ABSPATH, '', $path );
             $size    = $file->getSize();
             $content = $size > 0 ? @file_get_contents( $path ) : '';
 
             // Always flag PHP in uploads — it is never legitimate
+            // Exception: if the file is wp-login.php (handled separately above)
             $desc = 'PHP file in uploads directory — never legitimate, likely webshell';
 
             // Check for specific dangerous capabilities

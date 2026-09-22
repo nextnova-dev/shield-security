@@ -717,6 +717,7 @@ class Shield_Admin_UI {
 
             <p style="font-size:13px;color:#666;margin-bottom:12px;">
                 Use checkboxes to select threats, then use <strong>Remove Selected</strong> or <strong>Dismiss Selected</strong>.
+                <strong style="color:var(--ns-orange)">🔧 Orange = surgical removal</strong> — removes only injected code, keeps the file intact. A backup is saved to <code>wp-content/shield-backups/</code> first.
                 You can also act on individual threats using the row buttons.
                 To permanently exclude a file from future scans go to <a href="<?php echo admin_url('admin.php?page=shield-settings'); ?>">Settings → Excluded Paths</a>.
             </p>
@@ -759,13 +760,27 @@ class Shield_Admin_UI {
                         <td style="font-family:monospace;font-size:12px;"><?php echo esc_html( $threat['location'] ); ?></td>
                         <td style="font-size:12px;"><?php echo esc_html( $threat['description'] ); ?></td>
                         <td>
-                            <!-- Remove single -->
+                            <?php
+                            $is_surgical = ! empty( $threat['surgical'] );
+                            $btn_label   = $is_surgical
+                                ? '🔧 ' . ( ! empty( $threat['action_label'] ) ? $threat['action_label'] : 'Remove Injection' )
+                                : '🗑 Remove';
+                            $btn_confirm = $is_surgical
+                                ? 'Surgically remove only the injected malware code from this file? A backup will be saved to wp-content/shield-backups/ first.'
+                                : 'Permanently delete this file/entry? This cannot be undone.';
+                            $btn_class   = $is_surgical ? 'sh-btn-orange' : 'sh-btn-red';
+                            ?>
+                            <!-- Remove / Remove Injection -->
                             <form method="post" style="display:inline;">
                                 <?php shield_nonce_field(); ?>
-                                <input type="hidden" name="shield_action"       value="clean_selected">
-                                <input type="hidden" name="threat_indices[]"    value="<?php echo intval( $i ); ?>">
-                                <button type="submit" class="sh-btn sh-btn-red" style="padding:3px 10px;font-size:12px;"
-                                    onclick="return confirm('Remove this threat?')">Remove</button>
+                                <input type="hidden" name="shield_action"    value="clean_selected">
+                                <input type="hidden" name="threat_indices[]" value="<?php echo intval( $i ); ?>">
+                                <button type="submit"
+                                    class="sh-btn <?php echo $btn_class; ?>"
+                                    style="padding:3px 10px;font-size:12px;"
+                                    onclick="return confirm('<?php echo esc_js( $btn_confirm ); ?>')">
+                                    <?php echo $btn_label; ?>
+                                </button>
                             </form>
                             <!-- Dismiss single via AJAX -->
                             <button type="button" class="sh-btn sh-btn-grey" style="padding:3px 10px;font-size:12px;margin-left:4px;"
