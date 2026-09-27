@@ -14,6 +14,7 @@ class Shield_Settings {
                 'hide_login'       => '0',
                 'bot_redirect_404' => '1',
                 'auto_update'      => '1',
+            'anthropic_api_key' => '',
                 'email_alerts'     => '1',
                 'alert_email'      => get_option( 'admin_email' ),
                 'excluded_paths'   => '',

@@ -132,6 +132,7 @@ class Shield_Scanner {
             'uploads_php' => 'PHP Files in Uploads (webshells)',
             'database'    => 'Database (wp_options)',
             'system'      => 'Cron Jobs & Admin Users',
+            'ai_verify'   => 'AI Threat Verification',
             'finalise'    => 'Finalise & Save Results',
         );
     }
@@ -633,6 +634,42 @@ class Shield_Scanner {
             'uploads/wp-clone/',         // WP Clone backup
             'uploads/boldgrid-backup/',  // BoldGrid Backup
         );
+    }
+
+
+    // ── AI Threat Verification ───────────────────────────────────────
+    // Sends heuristic hits to Claude API to confirm malicious vs false positive.
+    // Confirmed-clean threats are silently removed. Signature hits are definitive
+    // and never sent to the API.
+    private static function run_ai_verify( &$partial ) {
+        if ( ! Shield_AI_Verify::is_enabled() ) return;
+
+        $verified = Shield_AI_Verify::verify_batch( $partial['threats'] );
+        $kept     = array();
+
+        foreach ( $verified as $t ) {
+            $verdict = isset( $t['ai_verdict'] ) ? $t['ai_verdict'] : 'unverified';
+
+            if ( $verdict === 'clean' ) {
+                // Confirmed false positive — drop silently
+                shield_log( 'AI verified clean (removed): ' . ( isset( $t['location'] ) ? $t['location'] : '' ), 'info' );
+                continue;
+            }
+            if ( $verdict === 'malicious' ) {
+                $t['description'] .= ' · AI confirmed: ' . ( isset( $t['ai_reason'] ) ? $t['ai_reason'] : '' );
+                $t['ai_badge']     = 'confirmed';
+            }
+            if ( $verdict === 'uncertain' ) {
+                $t['severity']     = 'warning';
+                $t['description']  = '[Needs manual review] ' . $t['description'];
+                $t['ai_badge']     = 'uncertain';
+            }
+            if ( $verdict === 'unverified' ) {
+                $t['ai_badge'] = 'unverified';
+            }
+            $kept[] = $t;
+        }
+        $partial['threats'] = $kept;
     }
 
     private static function finalise( &$partial ) {

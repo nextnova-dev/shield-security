@@ -468,6 +468,15 @@ class Shield_Admin_UI {
                 'pts'    => 20,
             ),
             array(
+                'key'         => 'ai_verify',
+                'done'        => Shield_AI_Verify::is_enabled(),
+                'warn'        => false,
+                'label'       => Shield_AI_Verify::is_enabled() ? 'AI threat verification active' : 'Enable AI verification (eliminates false positives)',
+                'action'      => admin_url( 'admin.php?page=shield-settings' ),
+                'action_label' => 'Add API Key',
+                'pts'         => 10,
+            ),
+            array(
                 'key'    => 'alerts',
                 'done'   => $email_alerts,
                 'warn'   => false,
@@ -758,7 +767,17 @@ class Shield_Admin_UI {
                             <?php endif; ?>
                         </td>
                         <td style="font-family:monospace;font-size:12px;"><?php echo esc_html( $threat['location'] ); ?></td>
-                        <td style="font-size:12px;"><?php echo esc_html( $threat['description'] ); ?></td>
+                        <td style="font-size:12px;">
+                            <?php echo esc_html( $threat['description'] ); ?>
+                            <?php $ai_b = isset( $threat['ai_badge'] ) ? $threat['ai_badge'] : ''; ?>
+                            <?php if ( $ai_b === 'confirmed' ) : ?>
+                                <span class="sh-badge" style="background:#fce7f3;color:#be185d;margin-left:6px;font-size:10px;">🤖 AI Confirmed</span>
+                            <?php elseif ( $ai_b === 'uncertain' ) : ?>
+                                <span class="sh-badge" style="background:#fef9c3;color:#854d0e;margin-left:6px;font-size:10px;">🤖 Needs Review</span>
+                            <?php elseif ( $ai_b === 'unverified' ) : ?>
+                                <span class="sh-badge sh-grey" style="margin-left:6px;font-size:10px;">AI: No Key</span>
+                            <?php endif; ?>
+                        </td>
                         <td>
                             <?php
                             $is_surgical = ! empty( $threat['surgical'] );
@@ -902,6 +921,43 @@ class Shield_Admin_UI {
                 <label><input type="checkbox" name="shield_email_alerts" value="1" <?php checked( $settings['email_alerts'], '1' ); ?>>
                 &nbsp;Email me when threats are detected during a scan</label>
             </div>
+            <!-- AI Verification -->
+            <div class="sh-card" style="border-left:4px solid #7c3aed;margin-bottom:20px;">
+                <h2 style="color:#7c3aed;">🤖 AI Threat Verification <span class="sh-badge" style="background:#f3e8ff;color:#7c3aed;margin-left:8px;">Premium Feature</span></h2>
+                <p style="font-size:13px;color:var(--ns-muted);margin-bottom:16px;">
+                    When enabled, NovaShield sends suspicious code snippets to Claude AI for verification before showing them as threats.
+                    Confirmed false positives are silently removed — users only see real threats.
+                    <strong>No personal data is sent</strong> — only the flagged PHP code snippet.
+                </p>
+                <div class="sh-field">
+                    <label>Anthropic API Key</label>
+                    <input type="password" name="shield_settings[anthropic_api_key]"
+                        value="<?php echo esc_attr( $settings['anthropic_api_key'] ?? '' ); ?>"
+                        placeholder="sk-ant-api03-..."
+                        style="max-width:420px;font-family:monospace;"/>
+                    <div class="desc">
+                        Get your API key at <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a> → API Keys.
+                        The key starts with <code>sk-ant-</code>.
+                        <?php if ( ! empty( $settings['anthropic_api_key'] ) ) : ?>
+                            <span style="color:var(--ns-green);font-weight:600;">✔ Key saved</span>
+                            (<?php echo esc_html( Shield_AI_Verify::mask_key( $settings['anthropic_api_key'] ) ); ?>)
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php if ( ! empty( $settings['anthropic_api_key'] ) ) : ?>
+                <div style="background:var(--ns-green-lt);border:1px solid #bbf7d0;border-radius:7px;padding:10px 14px;font-size:13px;">
+                    ✔ <strong>AI Verification active.</strong>
+                    Every heuristic scan hit will be verified by Claude AI before being shown as a threat.
+                    False positives are automatically removed.
+                </div>
+                <?php else : ?>
+                <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:7px;padding:10px 14px;font-size:13px;color:#6b21a8;">
+                    ℹ Enter your API key above to activate AI verification.
+                    Without it, heuristic results may include false positives.
+                </div>
+                <?php endif; ?>
+            </div>
+
             <div class="sh-field">
                 <label>Alert Email Address</label>
                 <input type="email" name="shield_alert_email" value="<?php echo esc_attr( $settings['alert_email'] ); ?>">
